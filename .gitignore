@@ -1,0 +1,17 @@
+*.pkl
+*~
+*.root
+*.pyc
+*.pyo
+*.png
+*.eps
+*.sh
+*.c
+*.html
+old/
+tests/
+history/
+models/
+portfolios/
+logs
+__pycache__

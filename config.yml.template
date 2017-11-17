@@ -1,0 +1,16 @@
+---
+general:
+  datadir: .
+accounts:
+  practice:
+    accountid: aaa
+    apikey: bbb
+  live:
+    accountid: xxx
+    apikey: yyy
+email:
+  from: me@example.com
+  to: you@example.com
+  server: mail.example.com
+  username: uuu
+  password: ppp
