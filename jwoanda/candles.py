@@ -4,7 +4,10 @@ try:
     import cPickle as pickle
 except:
     import pickle
-import gzip
+try:
+    import lzma
+except ImportError:
+    from backports import lzma
 import itertools
 import os
 import sys
@@ -322,7 +325,7 @@ class Candles(object):
             logging.error("File not found")
             raise Exception("File not found")
 
-        with gzip.open(filename, 'rb') as f:
+        with lzma.open(filename, 'rb') as f:
             data = pickle.load(f)
             self._data = data['candles']
             self._ncandles = data['ncandles']
@@ -340,7 +343,7 @@ class Candles(object):
         data['instrument'] = self._instrument
         data['granularity'] = self._granularity
         data['year'] = self.year
-        f = gzip.open(filename, 'wb', 5)
+        f = lzma.open(filename, 'wb', 5)
         pickle.dump(data, f)
         f.close()
 

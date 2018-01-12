@@ -1,4 +1,7 @@
-import gzip
+try:
+    import lzma
+except ImportError:
+    from backports import lzma
 try:
     import cPickle as pickle
 except:
@@ -97,7 +100,7 @@ class Ticks(object):
 
 
     def load(self, filename):
-        f = gzip.open(filename, 'rb')
+        f = lzma.open(filename, 'rb')
         data = pickle.load(f)
         f.close()
         self._data = data['ticks']
@@ -110,7 +113,7 @@ class Ticks(object):
         data['ticks'] = self._data
         data['nticks'] = self._nticks
         data['instrument'] = self._instrument
-        f = gzip.open(filename, 'wb', 5)
+        f = lzma.open(filename, 'wb', 5)
         pickle.dump(data, f)
         f.close()
 

@@ -2,7 +2,10 @@ from __future__ import print_function
 from abc import ABCMeta, abstractmethod
 import logging
 import threading
-import gzip
+try:
+    import lzma
+except ImportError:
+    from backports import lzma
 try:
     import cPickle as pickle
 except:
@@ -173,7 +176,7 @@ class Portfolio(with_metaclass(ABCMeta)):
 
 
     def load(self, filename):
-        f = gzip.open(filename, 'rb')
+        f = lzma.open(filename, 'rb')
         tmp_dict = pickle.load(f)
         f.close()
         self.__dict__.update(tmp_dict)
@@ -207,7 +210,7 @@ class Portfolio(with_metaclass(ABCMeta)):
 
         filename = os.path.join(directory, filename)
         logging.info("Saving portfolio to %s", filename)
-        f = gzip.open(filename, 'wb', 5)
+        f = lzma.open(filename, 'wb', 5)
         pickle.dump(tmp_dict, f)
         f.close()
 

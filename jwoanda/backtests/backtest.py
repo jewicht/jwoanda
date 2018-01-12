@@ -1,6 +1,9 @@
 import os
 import sys
-import gzip
+try:
+    import lzma
+except ImportError:
+    from backports import lzma
 import logging
 try:
     import cPickle as pickle
@@ -202,6 +205,6 @@ class Backtest(object, with_metaclass(ABCMeta)):
         filename = os.path.join(directory, filename)
         logging.info("Saving backtest data to %s", filename)
         
-        f = gzip.open(filename, 'wb', 5)
+        f = lzma.open(filename, 'wb', 5)
         pickle.dump(cdict, f)
         f.close()

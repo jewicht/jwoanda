@@ -1,7 +1,10 @@
 from __future__ import print_function
 
 import logging
-import gzip
+try:
+    import lzma
+except ImportError:
+    from backports import lzma
 import pickle
 import os
 
@@ -23,7 +26,7 @@ class Analysis(object):
         self.filename = None
 
         if backtest is not None:
-            with gzip.open(backtest) as f:
+            with lzma.open(backtest) as f:
                 d = pickle.load(f)
                 self.options = d['options']
                 self.portfolio = d['portfolio']
