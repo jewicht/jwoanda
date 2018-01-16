@@ -176,7 +176,7 @@ class Portfolio(with_metaclass(ABCMeta)):
 
 
     def load(self, filename):
-        f = lzma.open(filename, 'rb')
+        f = lzma.open(filename, mode='rb')
         tmp_dict = pickle.load(f)
         f.close()
         self.__dict__.update(tmp_dict)
@@ -210,7 +210,7 @@ class Portfolio(with_metaclass(ABCMeta)):
 
         filename = os.path.join(directory, filename)
         logging.info("Saving portfolio to %s", filename)
-        f = lzma.open(filename, 'wb', 5)
+        f = lzma.open(filename, mode='wb')
         pickle.dump(tmp_dict, f)
         f.close()
 

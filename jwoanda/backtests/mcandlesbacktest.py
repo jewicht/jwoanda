@@ -1,16 +1,18 @@
-from jwoanda.backtests.backtest import Backtest
-from jwoanda.strategy import MultiStrategy
-
 import numpy as np
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
 
+from jwoanda.backtests.backtest import Backtest
+from jwoanda.strategy import MultiInstrumentsStrategy
+from jwoanda.history import HistoryManager
+
+
 class MCandlesBacktest(Backtest):
-    def __init__(self, candles, strategy, **kwargs):
+    def __init__(self, strategy, start, end, **kwargs):
         super(MCandlesBacktest, self).__init__(strategy, **kwargs)
-        if not isinstance(self.strategy, MultiStrategy):
+        if not isinstance(self.strategy, MultiInstrumentsStrategy):
             raise Exception("Not a valid strategy")
-        self.candles = candles
+        self.candles = HistoryManager.getmulticandles(strategy.instruments, strategy.granularity, start, end)
 
     @property
     def instruments(self):

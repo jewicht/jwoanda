@@ -10,8 +10,6 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pyximport
-pyximport.install()
 
 from jwoanda.portfolio.analysisfcn import drawdown
 from jwoanda.enums import ExitReason, PositionStatus
@@ -26,7 +24,7 @@ class Analysis(object):
         self.filename = None
 
         if backtest is not None:
-            with lzma.open(backtest) as f:
+            with lzma.open(backtest, mode='rb') as f:
                 d = pickle.load(f)
                 self.options = d['options']
                 self.portfolio = d['portfolio']

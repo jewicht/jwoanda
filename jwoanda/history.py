@@ -4,8 +4,6 @@ import time
 
 from progressbar import Bar, ETA, Percentage, ProgressBar
 import v20
-import pyximport
-pyximport.install()
 
 from jwoanda.resizebyvolume import resizebyvolume_cython
 from jwoanda.candles import Candles, MultiCandles
@@ -21,10 +19,10 @@ def floattostr(x, n):
 class HistoryManager(object):
 
     @staticmethod
-    def getmulticandles(instruments, gran, years):
+    def getmulticandles(instruments, gran, start, end):
         clist = []
         for instrument in instruments:
-            candles = HistoryManager.getcandles(instrument, gran, years)
+            candles = HistoryManager.getcandles(instrument, gran, start, end)
             clist.append(candles)
         mcandles = MultiCandles(clist=clist)
         mcandles.align()
@@ -32,20 +30,29 @@ class HistoryManager(object):
 
 
     @staticmethod
-    def getcandles(instrument, gran, years):
-        if isinstance(years, list):
-            candles = None
-            for year in years:
-                _candles = HistoryManager._getcandles(instrument, gran, year)
-                if len(_candles.data) != _candles.ncandles:
-                    logging.error('len(_candles.data) != _candles.ncandles')
-                if candles is None:
-                    candles = _candles
-                else:
-                    candles.append(_candles)
-            return candles
-        else:
-            return HistoryManager._getcandles(instrument, gran, years)
+    def getcandles(instrument, gran, start, end):
+        dts = datetime.strptime(start, "%Y%m%d")
+        dte = datetime.strptime(end, "%Y%m%d")
+
+
+        
+        candles = None
+        for year in range(dts.year, dte.year + 1):
+            _candles = HistoryManager._getcandles(instrument, gran, year)
+            if len(_candles.data) != _candles.ncandles:
+                logging.error('len(_candles.data) != _candles.ncandles')
+            if candles is None:
+                candles = _candles
+            else:
+                candles.append(_candles)
+
+        #reduce to requested range
+        # TODO
+        fdts = float(dts.strftime("%s"))
+        fdte = float(dte.strftime("%s"))
+        candles.reduce(fdts, fdte)
+        return candles
+
 
 
     @staticmethod
@@ -163,7 +170,7 @@ class HistoryManager(object):
     def _downloadyearlydata(instrument, gran, year, showpbar=True):
         year = int(year)
         start_date = float(datetime(year, 1, 1, 0, 0).strftime('%s'))
-        end_date = float(datetime(year+1, 1, 1, 0, 0).strftime('%s'))
+        end_date = float(datetime(year, 12, 31, 23, 59).strftime('%s'))
         now = float(datetime.now().strftime('%s')) + 24 * 3600
         if now < end_date:
             end_date = now

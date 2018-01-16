@@ -13,8 +13,6 @@ from scipy import optimize
 
 import talib as ta
 
-from jwoanda.history import HistoryManager
-
 from jwoanda.strategies.random import RandomStrategy
 
 from jwoanda.backtests.simplebacktest import SimpleBacktest
@@ -47,11 +45,10 @@ def main():
         instrument = Instruments[sys.argv[i]]
         year = "2016"
         
-        candles = HistoryManager.getcandles(instrument, granularity, year)
         strat = RandomStrategy(instrument, granularity, units=1)
         #bt = SimpleBacktest(candles, strat, saveportfolio=True, plot=True)
         #bt.start()
-        bt = CandlesBacktest(candles, strat, saveportfolio=True, progressbar=True)
+        bt = CandlesBacktest(strat, "20160101", "20161231", saveportfolio=True, progressbar=True)
         #bt = FullCandlesBacktest(strat, saveportfolio=True, progressbar=True, candlesperc=0.05)
 
         profit = bt.start()

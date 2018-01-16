@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 
 from jwoanda.enums import Events
-from jwoanda.strategy import MultiStrategy, TickStrategy
+from jwoanda.strategy import MultiInstrumentsStrategy, TickStrategy
 
 
 class BaseStrategyTrading(with_metaclass(ABCMeta)):

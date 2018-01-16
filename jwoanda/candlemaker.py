@@ -13,7 +13,7 @@ from jwoanda.history import HistoryManager, floattostr
 from jwoanda.candles import MultiCandles
 from jwoanda.ticks import MultiTicks
 from jwoanda.enums import Granularity, VolumeGranularity, Events
-from jwoanda.strategy import TickStrategy, MultiStrategy
+from jwoanda.strategy import TickStrategy, MultiInstrumentsStrategy
 from jwoanda.strategytrading import StrategyTrading, MultiStrategyTrading, TickStrategyTrading
 from jwoanda.oandaaccount import oandaenv
 
@@ -149,7 +149,7 @@ class CandleMakerThread(threading.Thread):
             self.tt = TickStrategyTrading(self.strategy,
                                           self,
                                           name='_'.join(["Trading", self.strategy.name]))
-        elif isinstance(self.strategy, MultiStrategy):
+        elif isinstance(self.strategy, MultiInstrumentsStrategy):
             self.tt = MultiStrategyTrading(self.strategy,
                                            self,
                                            name='_'.join(["Trading", self.strategy.name]))

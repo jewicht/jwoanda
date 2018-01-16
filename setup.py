@@ -13,8 +13,13 @@ from Cython.Distutils import build_ext
 
 README_FILE = os.path.join(os.path.dirname(__file__), 'README.md')
 
-modules = [Extension(name='jwoanda.resizebyvolume', sources=['jwoanda/resizebyvolume.pyx']),
-           Extension(name='jwoanda.portfolio.analysisfcn', sources=['jwoanda/portfolio/analysisfcn.pyx'])]
+modules = []
+for root, dirs, files in os.walk("jwoanda/"):
+       for f in files:
+           if f.endswith('.pyx'):
+               pyx = root + "/" + f
+               name = pyx.replace('/', '.').replace('.pyx', '')
+               modules.append(Extension(name=name, sources=[pyx]))
 
 setup(
     name = "jwoanda",

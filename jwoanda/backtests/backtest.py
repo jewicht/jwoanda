@@ -205,6 +205,6 @@ class Backtest(object, with_metaclass(ABCMeta)):
         filename = os.path.join(directory, filename)
         logging.info("Saving backtest data to %s", filename)
         
-        f = lzma.open(filename, 'wb', 5)
+        f = lzma.open(filename, mode='wb')
         pickle.dump(cdict, f)
         f.close()

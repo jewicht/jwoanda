@@ -100,7 +100,7 @@ class Ticks(object):
 
 
     def load(self, filename):
-        f = lzma.open(filename, 'rb')
+        f = lzma.open(filename, mode='rb')
         data = pickle.load(f)
         f.close()
         self._data = data['ticks']
@@ -113,7 +113,7 @@ class Ticks(object):
         data['ticks'] = self._data
         data['nticks'] = self._nticks
         data['instrument'] = self._instrument
-        f = lzma.open(filename, 'wb', 5)
+        f = lzma.open(filename, mode='wb')
         pickle.dump(data, f)
         f.close()
 

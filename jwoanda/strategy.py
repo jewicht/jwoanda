@@ -320,16 +320,16 @@ class TickStrategy(with_metaclass(ABCMeta, BaseStrategy)):
 
 
 
-class MultiStrategy(with_metaclass(ABCMeta, BaseStrategy)):
+class MultiInstrumentsStrategy(with_metaclass(ABCMeta, BaseStrategy)):
     """class to run multiple currencies strategy"""
     def __init__(self, name, instruments, granularity, **kwargs):
-        """MultiStrategy constructor
+        """MultiInstrumentsStrategy constructor
         inputs:
               name: string
               instruments: List of Instruments
               granularity: Granularity object
         """
-        super(MultiStrategy, self).__init__(name, **kwargs)
+        super(MultiInstrumentsStrategy, self).__init__(name, **kwargs)
 
         for instrument in instruments:
             if not isinstance(instrument, Instruments):
@@ -359,4 +359,36 @@ class MultiStrategy(with_metaclass(ABCMeta, BaseStrategy)):
     @abstractmethod
     def onMultiCandle(self, candles, cnt):
         """method is called at the close. Candles is a dictionary containing the Candles"""
+        pass
+
+
+
+class MultiGranularitiesStrategy(with_metaclass(ABCMeta, BaseStrategy)):
+    """ class to run over multiple granularites"""
+
+    def __init__(self, name, instrument, granularities, **kwargs):
+        """MultiGranularitiesStrategy constructor
+        inputs:
+              name: string
+              instrument: Instruments
+              granularities: List of Granularity object
+        """
+        super(MultiGranularitiesStrategy, self).__init__(name, **kwargs) 
+        self._instrument = instrument
+        self._granularities = granularities
+        
+    @property
+    def instrument(self):
+        return self._instruments
+
+    @property
+    def granularities(self):
+        return self._granularities
+
+    @abstractmethod
+    def onTick(self, candles, cnt):
+        pass
+
+    @abstractmethod
+    def onCandle(self, candles, cnt):
         pass

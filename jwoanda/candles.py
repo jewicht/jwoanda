@@ -325,7 +325,7 @@ class Candles(object):
             logging.error("File not found")
             raise Exception("File not found")
 
-        with lzma.open(filename, 'rb') as f:
+        with lzma.open(filename, mode='rb') as f:
             data = pickle.load(f)
             self._data = data['candles']
             self._ncandles = data['ncandles']
@@ -343,7 +343,7 @@ class Candles(object):
         data['instrument'] = self._instrument
         data['granularity'] = self._granularity
         data['year'] = self.year
-        f = lzma.open(filename, 'wb', 5)
+        f = lzma.open(filename, mode='wb')
         pickle.dump(data, f)
         f.close()
 
@@ -365,3 +365,8 @@ class Candles(object):
     def append(self, candles):
         self._data = np.append(self._data, candles._data)
         self.ncandles += candles.ncandles
+
+
+    def reduce(self, start, end):
+        self._data = self._data[np.logical_and(self._data['time'] >= start, self._data['time'] <= end)]
+        self.ncandles = len(self._data)

@@ -2,6 +2,7 @@ import logging
 import numpy as np
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
+from jwoanda.history import HistoryManager
 from jwoanda.backtests.backtest import Backtest
 from jwoanda.strategy import Strategy
 from jwoanda.oandaaccount import oandaenv
@@ -11,10 +12,10 @@ except:
     pass
 
 class CandlesBacktest(Backtest):
-    def __init__(self, candles, strategy, **kwargs):
+    def __init__(self, strategy, start, end, **kwargs):
         super(CandlesBacktest, self).__init__(strategy, **kwargs)
 
-        self.candles = candles
+        self.candles = HistoryManager.getcandles(strategy.instrument, strategy.granularity, start, end)
         
         if not isinstance(self.strategy, Strategy):
             raise Exception("Not a strategy")

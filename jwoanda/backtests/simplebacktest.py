@@ -6,13 +6,13 @@ from jwoanda.backtests.backtest import Backtest
 from jwoanda.strategy import Strategy
 
 class SimpleBacktest(Backtest):
-    def __init__(self, candles, strategy, **kwargs):
+    def __init__(self, strategy, start, end, **kwargs):
         super(SimpleBacktest, self).__init__(strategy, **kwargs)
 
         if not isinstance(self.strategy, Strategy):
             raise Exception("Not a single-candle strategy")
 
-        self.candles = candles
+        self.candles = HistoryManager.getcandles(strategy.instrument, strategy.granularity, start, end)
 
         self.longcut = kwargs.get("longcut", 0.)
         self.shortcut = kwargs.get("shortcut", 0.)
