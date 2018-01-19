@@ -31,14 +31,21 @@ class HistoryManager(object):
 
     @staticmethod
     def getcandles(instrument, gran, start, end):
+        if not isinstance(instrument, Instruments):
+            raise Exception("Instrument {} not understood".format(instrument))
+        if not isinstance(gran, Granularity) and not isinstance(gran, VolumeGranularity):
+            raise Exception("Granularity {} not understood".format(gran))
+
         dts = datetime.strptime(start, "%Y%m%d")
         dte = datetime.strptime(end, "%Y%m%d")
 
-
-        
         candles = None
         for year in range(dts.year, dte.year + 1):
-            _candles = HistoryManager._getcandles(instrument, gran, year)
+            if isinstance(gran, VolumeGranularity):
+                _s5candles = HistoryManager._getcandles(instrument, Granularity.S5, year)
+                _candles = HistoryManager.resizebyvolume(_s5candles, gran.volume)
+            else:
+                _candles = HistoryManager._getcandles(instrument, gran, year)
             if len(_candles.data) != _candles.ncandles:
                 logging.error('len(_candles.data) != _candles.ncandles')
             if candles is None:
@@ -57,24 +64,12 @@ class HistoryManager(object):
 
     @staticmethod
     def _getcandles(instrument, gran, year):
-
-        if not isinstance(instrument, Instruments):
-            raise Exception("Instrument {} not understood".format(instrument))
-        if not isinstance(gran, Granularity) and not isinstance(gran, VolumeGranularity):
-            raise Exception("Granularity {} not understood".format(gran))
-
         try:
             candles = Candles(instrument=instrument, granularity=gran, year=year)
             candles.load(datadir=oandaenv.datadir)
             return candles
         except:
-            if isinstance(gran, VolumeGranularity):
-                s5candles = HistoryManager.getcandles(instrument, Granularity.S5, year)
-                newcandles = HistoryManager.resizebyvolume(s5candles, gran.volume)
-                #newcandles.save(datadir=oandaenv.datadir) do not save anymore
-                return newcandles
-            else:
-                return HistoryManager._downloadyearlydata(instrument, gran, year)
+            return HistoryManager._downloadyearlydata(instrument, gran, year)
 
 
     @staticmethod
@@ -237,7 +232,7 @@ class HistoryManager(object):
                                         Percentage(),
                                         Bar(),
                                         ETA()],
-                               maxval=int(end_date-start_date)).start()
+                               max_value=int(end_date-start_date)).start()
 
         while start_date < end_date:
 

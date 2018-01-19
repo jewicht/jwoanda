@@ -5,6 +5,7 @@ from __future__ import print_function
 import logging
 import threading
 from datetime import datetime
+import pathlib
 
 from jwoanda.strategies.null import NullStrategy, NullMultiStrategy
 from jwoanda.appbuilder import TradingAppThread
@@ -17,7 +18,7 @@ def findtab():
     return tab[0]
 
 
-
+pathlib.Path('logs').mkdir(parents=True, exist_ok=True)
 logging.basicConfig(filename='logs/trading_null-{}.log'.format(datetime.utcnow().strftime("%Y%m%d%H%M")),
                     level=logging.DEBUG,
                     format='[%(levelname)s] (%(threadName)-10s) %(message)s')
@@ -46,5 +47,5 @@ strategy = NullStrategy(Instruments.EUR_USD,
                         shortprob=0.4)
 strategies.append(strategy)
 
-tab = TradingAppThread(strategies, usemp=False, usefakedata=False, usegtk=True)
+tab = TradingAppThread(strategies, usemp=False, usefakedata=False)
 tab.start()

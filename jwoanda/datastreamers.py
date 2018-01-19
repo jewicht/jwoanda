@@ -8,6 +8,7 @@ import numpy as np
 from jwoanda.instenum import Instruments
 from jwoanda.history import floattostr
 from jwoanda.oandaaccount import oandaenv
+from jwoanda.utils import get_items
 
 class HeartbeatCheck(threading.Thread):
     def __init__(self, obj, method, name, delay=5):
@@ -154,7 +155,7 @@ class RatesStreamer(threading.Thread):
                     self.gtkinterface.setprice(msg.instrument, bid, ask)
                     
                 #send the tick to the CandleMaker
-                for key, value in self.tickQueues.items():
+                for key, value in get_items(self.tickQueues):
                     if instrument in key:
                         value.put(tick)
             else:
@@ -206,7 +207,7 @@ class FakeRatesStreamer(threading.Thread):
 
                 tick = (instrument, _time, bid, ask)
                 #send the tick to the CandleMaker
-                for key, value in self.tickQueues.items():
+                for key, value in get_items(self.tickQueues):
                     if instrument in key:
                         value.put(tick)
             time.sleep(0.25)

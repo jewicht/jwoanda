@@ -24,7 +24,7 @@ class MCandlesBacktest(Backtest):
                                         Percentage(),
                                         Bar(),
                                         ETA()],
-                               maxval=self.candles.ncandles).start()
+                               max_value=self.candles.ncandles).start()
 
         mcandlesdict = {}
         for instrument in self.candles.instruments:

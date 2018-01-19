@@ -20,7 +20,7 @@ class TicksBacktest(Backtest):
                                         Percentage(),
                                         Bar(),
                                         ETA()],
-                               maxval=len(candles)).start()
+                               max_value=len(candles)).start()
 
         self.strategy.modeBT = True
         self.strategy.calcIndicators(candles)

@@ -15,6 +15,7 @@ from jwoanda.portfolio.analysisfcn import drawdown
 from jwoanda.enums import ExitReason, PositionStatus
 from jwoanda.instenum import Instruments
 from jwoanda.portfolio.btportfolio import BTPortfolio
+from jwoanda.utils import get_items
 
 class Analysis(object):
 
@@ -57,7 +58,7 @@ class Analysis(object):
 
             if self.options is not None:
                 logging.info("Parameters were")
-                for key, val in self.options.items():
+                for key, val in get_items(self.options):
                     logging.info("{} = {}".format(key, val))
                 logging.info("")
             

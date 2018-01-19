@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from jwoanda.strategy import Strategy, MultiStrategy
+from jwoanda.strategy import Strategy, MultiInstrumentsStrategy
 from jwoanda.history import floattostr
 
 class NullStrategy(Strategy):
@@ -40,7 +40,7 @@ class NullStrategy(Strategy):
 
 
 
-class NullMultiStrategy(MultiStrategy):
+class NullMultiStrategy(MultiInstrumentsStrategy):
     def __init__(self, instruments, granularity, **kwargs):
         super(NullMultiStrategy, self).__init__("MultiNullStrategy",
                                                 instruments,

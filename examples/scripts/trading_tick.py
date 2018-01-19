@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import logging
 from datetime import datetime
+import pathlib
 
 from jwoanda.strategies.tickema import TickEmaStrategy
 from jwoanda.appbuilder import TradingAppThread
@@ -11,6 +12,7 @@ from jwoanda.enums import Granularity, VolumeGranularity
 from jwoanda.instenum import Instruments
 
 
+pathlib.Path('logs').mkdir(parents=True, exist_ok=True)
 logging.basicConfig(filename='logs/trading_tick-{}.log'.format(datetime.utcnow().strftime("%Y%m%d%H%M")),
                     level=logging.DEBUG,
                     format='[%(levelname)s] (%(threadName)-10s) %(message)s')

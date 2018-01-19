@@ -12,6 +12,7 @@ except:
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 import numpy as np
+import pathlib
 
 from jwoanda.strategy import BaseStrategy
 from jwoanda.portfolio.btportfolio import BTPortfolio
@@ -187,11 +188,7 @@ class Backtest(object, with_metaclass(ABCMeta)):
         if self._saveindatadir:
             directory = os.path.join(oandaenv.datadir, directory)
 
-        if not os.path.isdir(directory):
-            try:
-                os.makedirs(directory)
-            except:
-                pass
+        pathlib.Path(directory).mkdir(parents=True, exist_ok=True) 
 
         if filename is None:
             instlist = '-'.join([instr.name for instr in self.strategy.instruments])

@@ -375,11 +375,11 @@ class MultiGranularitiesStrategy(with_metaclass(ABCMeta, BaseStrategy)):
         """
         super(MultiGranularitiesStrategy, self).__init__(name, **kwargs) 
         self._instrument = instrument
-        self._granularities = granularities
+        self._granularities = sorted(granularities, key = lambda g: g.value)
         
     @property
     def instrument(self):
-        return self._instruments
+        return self._instrument
 
     @property
     def granularities(self):

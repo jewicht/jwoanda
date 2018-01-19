@@ -50,7 +50,7 @@ class FullCandlesBacktest(Backtest):
                                         Percentage(),
                                         Bar(),
                                         ETA()],
-                               maxval=len(candles)).start()
+                               max_value=len(candles)).start()
         volmode = False
         if isinstance(self.strategy.granularity, VolumeGranularity):
             volmode = True

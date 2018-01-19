@@ -12,6 +12,7 @@ import itertools
 import os
 import sys
 import logging
+import pathlib
 
 import numpy as np
 import pandas as pd
@@ -20,7 +21,7 @@ from xdg import BaseDirectory
 
 from jwoanda.instenum import Instruments
 from jwoanda.enums import Granularity, VolumeGranularity
-
+from jwoanda.utils import get_items
 
 class MultiCandles(object):
     """MultiCandles class: candles for many instruments"""
@@ -115,7 +116,7 @@ class MultiCandles(object):
 
     def align(self):
         dflist = []
-        for instrument, c in self._data.items():
+        for instrument, c in get_items(self._data):
             dflist.append(c.DataFrame())
 
         for cnt in range(0, len(dflist)):
@@ -163,7 +164,7 @@ class Candles(object):
         if cdict is not None:
             ncandles = len(cdict.get('volume'))
             self._data = self.zerodata(ncandles)
-            for key, val in cdict.items():
+            for key, val in get_items(cdict):
                 self._data[key] = val
             self._ncandles = ncandles
             return
@@ -307,10 +308,7 @@ class Candles(object):
 
         pythonver = "py%d%d" % (sys.version_info.major, sys.version_info.minor)
         directory = os.path.join(datadir, "history", self.instrument.name)
-        try:
-            os.makedirs(directory)
-        except:
-            pass
+        pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
 
         filename = "%s/%s-%s-%s-%s.history" % (directory, self.instrument.name, self.granularity.name, self.year, pythonver)
         return filename

@@ -14,8 +14,8 @@ import copy
 import os
 import sys
 from datetime import datetime
-
 from six import with_metaclass
+import pathlib
 
 import numpy as np
 import v20
@@ -23,7 +23,7 @@ import v20
 from jwoanda.enums import PositionStatus, ExitReason
 from jwoanda.instenum import Instruments
 from jwoanda.oandaaccount import oandaenv
-
+from jwoanda.utils import get_items
 
 class Portfolio(with_metaclass(ABCMeta)):
 
@@ -189,7 +189,7 @@ class Portfolio(with_metaclass(ABCMeta)):
 
     def save(self, filename=None, datadir=None):
         tmp_dict = copy.copy(self.__dict__)
-        for key, val in tmp_dict.items():
+        for key, val in get_items(tmp_dict):
             if isinstance(val, type(threading.Lock())):
                 del tmp_dict[key]
 
@@ -198,12 +198,7 @@ class Portfolio(with_metaclass(ABCMeta)):
             datadir = oandaenv.datadir
             directory = os.path.expanduser(os.path.join(datadir, "portfolios"))
 
-            
-        if not os.path.isdir(directory):
-            try:
-                os.makedirs(directory)
-            except:
-                pass
+        pathlib.Path(directory).mkdir(parents=True, exist_ok=True)    
 
         if filename is None:
             filename = self.picklename()
