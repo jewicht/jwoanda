@@ -13,7 +13,7 @@ except:
 
 class CandlesBacktest(Backtest):
     def __init__(self, strategy, start, end, **kwargs):
-        super(CandlesBacktest, self).__init__(strategy, **kwargs)
+        super(CandlesBacktest, self).__init__(strategy, start, end, **kwargs)
 
         self.candles = HistoryManager.getcandles(strategy.instrument, strategy.granularity, start, end)
         

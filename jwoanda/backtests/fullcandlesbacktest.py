@@ -13,13 +13,12 @@ from jwoanda.candlemaker import CandleMakerThread
 from jwoanda.strategytrading import StrategyTrading
 
 class FullCandlesBacktest(Backtest):
-    def __init__(self, strategy, **kwargs):
-        super(FullCandlesBacktest, self).__init__(strategy, **kwargs)
+    def __init__(self, strategy, start, end, **kwargs):
+        super(FullCandlesBacktest, self).__init__(strategy, start, end, **kwargs)
         logging.info("init FullCandlesBacktest for strategy %s", strategy.name)
         
         granularity = kwargs.get("granularity", Granularity.S5)
-        year = kwargs.get("year", 2016)
-        self.candles = HistoryManager.getcandles(strategy.instrument, granularity, year)
+        self.candles = HistoryManager.getcandles(strategy.instrument, granularity, start, end)
 
         candlesperc = kwargs.get("candlesperc", -1)
 

@@ -9,7 +9,7 @@ from jwoanda.history import HistoryManager
 
 class MCandlesBacktest(Backtest):
     def __init__(self, strategy, start, end, **kwargs):
-        super(MCandlesBacktest, self).__init__(strategy, **kwargs)
+        super(MCandlesBacktest, self).__init__(strategy, start, end, **kwargs)
         if not isinstance(self.strategy, MultiInstrumentsStrategy):
             raise Exception("Not a valid strategy")
         self.candles = HistoryManager.getmulticandles(strategy.instruments, strategy.granularity, start, end)
@@ -50,15 +50,8 @@ class MCandlesBacktest(Backtest):
             pbar.finish()
 
         if self.saveportfolio:
-            filename = "MBT-" + "-".join([self.strategy.name] + [i.name for i in self.instruments] + [self.granularity.name, str(self.candles.year)])
-            #self.portfolio.save(datadir='portfolios', filename=filename + ".portfolio")
-            self.save(datadir='backtests', filename=filename + ".backtest")
+            self.save()
 
-        #        print(self.portfolio.trades)
         trades = self.portfolio.trades
-        #if not 'status' in trades.columns:
-        #    return 0.
-        #trades = trades[trades.status == ]
-
-        profit = np.sum(trades["pl"])# * (trades["status"] == POSCLOSED))
-        return profit
+        profit = np.sum(trades["pl"])
+        return profit, self.portfolio.ntrades

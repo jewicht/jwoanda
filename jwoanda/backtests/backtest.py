@@ -20,12 +20,15 @@ from jwoanda.oandaaccount import oandaenv
 
 class Backtest(object, with_metaclass(ABCMeta)):
 
-    def __init__(self, strategy, **kwargs):
+    def __init__(self, strategy, start, end, **kwargs):
         if not isinstance(strategy, BaseStrategy):
             raise Exception("Not a valid strategy")
 
         self._strategy = strategy
 
+        self._startdate = start
+        self._enddate = end
+        
         _portfolio = kwargs.get('portfolio')
         if _portfolio is None:
             self._strategy.portfolio = BTPortfolio()
@@ -192,7 +195,7 @@ class Backtest(object, with_metaclass(ABCMeta)):
 
         if filename is None:
             instlist = '-'.join([instr.name for instr in self.strategy.instruments])
-            filename = '-'.join([type(self).__name__, self.strategy.name, instlist, self.granularity.name, str(self.candles.year)])
+            filename = '-'.join([type(self).__name__, self.strategy.name, instlist, self.granularity.name, self._startdate, self._enddate])
             if self._includedate:
                 mydate = self.portfolio._startdate.strftime("%Y%m%d%H%M")
                 filename += mydate

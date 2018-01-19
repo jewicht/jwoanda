@@ -3,13 +3,13 @@ from progressbar import Bar, ETA, Percentage, ProgressBar
 
 from jwoanda.backtests.backtest import Backtest
 from jwoanda.enums import Granularity
-
+from jwoanda.history import HistoryManager
 
 class TicksBacktest(Backtest):
-    def __init__(self, candles, strategy, **kwargs):
-        super(TicksBacktest, self).__init__(strategy, **kwargs)
-        self.candles = candles
-
+    def __init__(self, strategy, start, end, **kwargs):
+        super(TicksBacktest, self).__init__(strategy, start, end, **kwargs)
+        self.candles = HistoryManager.getcandles(strategy.instrument, Granularity.S5, start, end)
+        
     def start(self):
 
         #print(type(self.candles))
@@ -37,14 +37,8 @@ class TicksBacktest(Backtest):
             pbar.finish()
 
         if self.saveportfolio:
-            granname = self.granularity.name if isinstance(self.granularity, Granularity) else self.granularity
-            self.portfolio.save("BT-" + "-".join([self.strategy.name, self.instrument.name, granname, str(self.candles.year)]) + ".portfolio")
+            self.save()
 
-        #        print(self.portfolio.trades)
         trades = self.portfolio.trades
-        #if not 'status' in trades.columns:
-        #    return 0.
-        #trades = trades[trades.status == ]
-
         pl = np.sum(trades["pl"])
-        return pl
+        return pl, self.portfolio.ntrades

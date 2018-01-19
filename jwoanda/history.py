@@ -65,8 +65,8 @@ class HistoryManager(object):
     @staticmethod
     def _getcandles(instrument, gran, year):
         try:
-            candles = Candles(instrument=instrument, granularity=gran, year=year)
-            candles.load(datadir=oandaenv.datadir)
+            candles = Candles(instrument=instrument, granularity=gran)
+            candles.load(year, datadir=oandaenv.datadir)
             return candles
         except:
             return HistoryManager._downloadyearlydata(instrument, gran, year)
@@ -78,7 +78,6 @@ class HistoryManager(object):
         cdict = resizebyvolume_cython(candles, maxvolume)
         newcandles = Candles(candles.instrument,
                              granularity=VolumeGranularity(maxvolume),
-                             year=candles.year,
                              cdict=cdict)
         return newcandles
 
@@ -91,7 +90,7 @@ class HistoryManager(object):
         maxentries = int(1.2 * totvolume / maxvolume)
 
         logging.debug("totvolume = %d", totvolume)
-        newcandles = Candles(size=maxentries, instrument=candles.instrument, granularity=VolumeGranularity(maxvolume), year=candles.year)
+        newcandles = Candles(size=maxentries, instrument=candles.instrument, granularity=VolumeGranularity(maxvolume))
 
         volume = 0
 
@@ -172,8 +171,7 @@ class HistoryManager(object):
         candles = HistoryManager.downloadhistoricaldata(instrument, gran, start_date, end_date, showpbar)
         if candles is None:
             raise Exception("Couldn't download data")
-        candles.year = year
-        candles.save(datadir=oandaenv.datadir)
+        candles.save(year, datadir=oandaenv.datadir)
         return candles
 
 

@@ -13,6 +13,7 @@ import os
 import sys
 import logging
 import pathlib
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -59,11 +60,6 @@ class MultiCandles(object):
     @property
     def granularity(self):
         return self.candles(self.instruments[0]).granularity
-
-
-    @property
-    def year(self):
-        return self.candles(self.instruments[0]).year
 
 
     @property
@@ -136,14 +132,13 @@ class MultiCandles(object):
 
 
 class Candles(object):
-    def __init__(self, instrument, granularity, year="", size=1000, df=None, nparr=None, cdict=None):
+    def __init__(self, instrument, granularity, size=1000, df=None, nparr=None, cdict=None):
 
         self._instrument = None
         self._granularity = None
 
         self.instrument = instrument
         self.granularity = granularity
-        self._year = str(year)
 
         if df is not None:
             size = len(df)
@@ -228,16 +223,6 @@ class Candles(object):
         else:
             raise Exception("Not a valid granularity: type={}".format(type(granularity)))
 
-    @property
-    def year(self):
-        return self._year
-
-
-    @year.setter
-    def year(self, year):
-        self._year = str(year)
-
-
     def set(self, index, candle):
         if index >= len(self._data):
             self.resize(len(self._data) * 2)
@@ -282,7 +267,7 @@ class Candles(object):
             self._data = np.array(reqcandles)
             self.ncandles = newsize
         else:
-            return Candles(instrument=self.instrument, granularity=self.granularity, year=self.year, nparr=reqcandles)
+            return Candles(instrument=self.instrument, granularity=self.granularity, nparr=reqcandles)
 
 
     def tail(self, size, inplace=False, oneincomplete=0):
@@ -294,7 +279,7 @@ class Candles(object):
         if inplace:
             self._data = np.array(reqcandles)
         else:
-            return Candles(instrument=self.instrument, granularity=self.granularity, year=self.year, nparr=reqcandles)
+            return Candles(instrument=self.instrument, granularity=self.granularity, nparr=reqcandles)
 
 
     def fill(self, oandacandles):
@@ -302,7 +287,7 @@ class Candles(object):
             self.add(candle)
 
 
-    def getfilename(self, datadir=None):
+    def getfilename(self, year, datadir=None):
         if datadir is None:
             datadir = BaseDirectory.save_data_path("jwoanda")
 
@@ -310,12 +295,12 @@ class Candles(object):
         directory = os.path.join(datadir, "history", self.instrument.name)
         pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
 
-        filename = "%s/%s-%s-%s-%s.history" % (directory, self.instrument.name, self.granularity.name, self.year, pythonver)
+        filename = "%s/%s-%s-%s-%s.history" % (directory, self.instrument.name, self.granularity.name, year, pythonver)
         return filename
 
 
-    def load(self, datadir=None):
-        filename = self.getfilename(datadir)
+    def load(self, year, datadir=None):
+        filename = self.getfilename(year, datadir)
 
         logging.info("Reading %s @ %s from %s", self.instrument.name, self.granularity.name, filename)
 
@@ -329,22 +314,25 @@ class Candles(object):
             self._ncandles = data['ncandles']
             self._instrument = data['instrument']
             self._granularity = data['granularity']
-            self._year = data['year']
 
 
-    def save(self, datadir=None):
-        filename = self.getfilename(datadir)
+    def save(self, year, datadir=None):
+        filename = self.getfilename(year, datadir)
 
         data = {}
         data['candles'] = self._data
         data['ncandles'] = self._ncandles
         data['instrument'] = self._instrument
         data['granularity'] = self._granularity
-        data['year'] = self.year
         f = lzma.open(filename, mode='wb')
         pickle.dump(data, f)
         f.close()
 
+    def begindate(self):
+        return datetime.fromtimestamp(self._data[0]['time']).strftime("%Y%m%d")
+        
+    def enddate(self):
+        return datetime.fromtimestamp(self._data[-1]['time']).strftime("%Y%m%d")
 
     def DataFrame(self):
         return pd.DataFrame({'openAsk':  self._data['openAsk'],
