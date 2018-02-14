@@ -15,12 +15,7 @@ import talib as ta
 
 from jwoanda.strategies.random import RandomStrategy
 
-from jwoanda.backtests.simplebacktest import SimpleBacktest
-from jwoanda.backtests.candlesbacktest import CandlesBacktest
-from jwoanda.backtests.fullcandlesbacktest import FullCandlesBacktest
-from jwoanda.backtests.ticksbacktest import TicksBacktest
-from jwoanda.backtests.mcandlesbacktest import MCandlesBacktest
-
+from jwoanda.backtests.backtest import Backtest
 from jwoanda.enums import VolumeGranularity, Granularity
 from jwoanda.instenum import Instruments
 from jwoanda.oandaaccount import oandaenv
@@ -45,10 +40,10 @@ def main():
         instrument = Instruments[sys.argv[i]]
         year = "2016"
         
-        strat = RandomStrategy(instrument, granularity, units=1)
+        strat = RandomStrategy( [(instrument, granularity)], units=1)
         #bt = SimpleBacktest(candles, strat, saveportfolio=True, plot=True)
         #bt.start()
-        bt = CandlesBacktest(strat, "20160101", "20161231", saveportfolio=True, progressbar=True)
+        bt = Backtest(strat, "20160101", "20161231", saveportfolio=True, progressbar=True)
         #bt = FullCandlesBacktest(strat, saveportfolio=True, progressbar=True, candlesperc=0.05)
 
         profit = bt.start()

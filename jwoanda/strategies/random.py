@@ -5,8 +5,8 @@ from jwoanda.strategy import Strategy
 from jwoanda.enums import ExitReason
 
 class RandomStrategy(Strategy):
-    def __init__(self, instrument, granularity, **kwargs):
-        super(RandomStrategy, self).__init__("RandomStrategy", instrument, granularity, **kwargs)
+    def __init__(self, iglist, **kwargs):
+        super(RandomStrategy, self).__init__("RandomStrategy", iglist, **kwargs)
         self.prob = kwargs.get("prob", 0.5)
         self.state = 0
         self.tradeId = -1
@@ -14,7 +14,7 @@ class RandomStrategy(Strategy):
     def onTick(self, ticks, cnt):
         pass
 
-    def onCandle(self, candles, cnt):
+    def onCandle(self):
         logging.debug("state = %d tradeId = %d", self.state, self.tradeId)
         
         if np.random.random() > self.prob:
@@ -29,12 +29,6 @@ class RandomStrategy(Strategy):
         else:
             self.state = 0
 
-        lastcandle = candles[cnt]
-        closeBid = lastcandle['closeBid']
-        closeAsk = lastcandle['closeAsk']
-        time = lastcandle['time']
-        
-        
         if self.state == +1:
             if self.tradeId > -1:
                 return

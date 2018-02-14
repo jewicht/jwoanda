@@ -19,7 +19,6 @@ from jwoanda.portfolio.oandaportfolio import OandaPortfolio, OandaPortfolioManag
 from jwoanda.enums import Events, ExitReason
 from jwoanda.gtkinterface import GTKInterface
 
-
 class TradingAppThread(threading.Thread):
     def __init__(self, strategies, environment='practice', **kwargs):
         super(TradingAppThread, self).__init__(name='TradingAppThread')
@@ -39,7 +38,7 @@ class TradingApp(object):
 
         self.strategies = strategies
         self.portfolio = OandaPortfolio()
-
+        
         self.doterminate = False
         if not kwargs.get("nosignal", False):
             signal.signal(signal.SIGTERM, self.signal_term_handler)
@@ -103,7 +102,7 @@ class TradingApp(object):
                 tickQueues[tuple(strategy.instruments)] = tQ
 
                 strategy.portfolio = self.portfolio
-
+                strategy.hm = self.hm
                 cmht = CandleMakerHelperThread(tQ,
                                                strategy,
                                                name='_'.join(["CandleMakerHelper", strategy.name]))

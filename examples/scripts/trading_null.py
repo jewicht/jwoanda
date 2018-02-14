@@ -25,8 +25,8 @@ logging.basicConfig(filename='logs/trading_null-{}.log'.format(datetime.utcnow()
 
 strategies = []
 
-strategy = NullMultiStrategy([Instruments.GBP_USD, Instruments.EUR_GBP],
-                             Granularity.S30,
+strategy = NullMultiStrategy([(Instruments.GBP_USD, Granularity.S30),
+                              (Instruments.EUR_GBP, Granularity.S30)],
                              units=1,
                              takeprofit=30,
                              stoploss=30,
@@ -38,8 +38,8 @@ strategies.append(strategy)
 #     strategy = NullStrategy(instrument, VolumeGranularity(20))
 #     strategies.append(strategy)
 
-strategy = NullStrategy(Instruments.EUR_USD,
-                        VolumeGranularity(20),
+strategy = NullStrategy([(Instruments.EUR_USD,
+                          VolumeGranularity(20))]
                         units=1,
                         takeprofit=30,
                         stoploss=30,

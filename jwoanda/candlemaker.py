@@ -9,8 +9,8 @@ try:
 except:
     from Queue import Queue
 
-from jwoanda.history import HistoryManager, floattostr
-from jwoanda.candles import MultiCandles
+from jwoanda.history import downloadcandles, downloadhistoricaldata, resizebyvolume, floattostr
+from jwoanda.multicandles import MultiCandles
 from jwoanda.ticks import MultiTicks
 from jwoanda.enums import Granularity, VolumeGranularity, Events
 from jwoanda.strategy import TickStrategy, MultiInstrumentsStrategy
@@ -165,7 +165,7 @@ class CandleMakerThread(threading.Thread):
         #get history and resume from there
         for instrument in self.instruments:
             if not self.volmode:
-                candles = HistoryManager.downloadcandles(instrument.name, self.granularity.name, 200)
+                candles = downloadcandles(instrument.name, self.granularity.name, 200)
 
 
                 if candles is not None:
@@ -180,8 +180,8 @@ class CandleMakerThread(threading.Thread):
                 end_date = float(datetime.utcnow().strftime("%s"))
                 start_date = end_date - 3. * 24 * 60 * 60
                 end_date += 24 * 60 * 60
-                candles = HistoryManager.downloadhistoricaldata(instrument, Granularity.S5, start_date, end_date, showpbar=False)
-                #candles = HistoryManager.downloadcandles(instrument.name, Granularity.S5.name, 5000)
+                candles = downloadhistoricaldata(instrument, Granularity.S5, start_date, end_date, showpbar=False)
+                #candles = downloadcandles(instrument.name, Granularity.S5.name, 5000)
 
                 if candles is not None:
                     logging.info("We received %d candles", candles.ncandles)
@@ -189,7 +189,7 @@ class CandleMakerThread(threading.Thread):
                     #tmp = Candles(instrument=instrument, granularity=Granularity.S5, size=100000)
                     #tmp.fill(candles)
 
-                    tmp = HistoryManager.resizebyvolume(candles, self.maxvolume)
+                    tmp = resizebyvolume(candles, self.maxvolume)
                     tmp.resize(100000)
 
                     self.mcandles = MultiCandles(clist=[tmp])

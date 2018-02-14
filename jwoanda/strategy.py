@@ -35,6 +35,8 @@ class BaseStrategy(with_metaclass(ABCMeta)):
         self._reqcandles = kwargs.get("reqcandles", 500)
         self._reqticks = kwargs.get("reqticks", 1000)
 
+        self._hm = None
+        
 
     def time(self, instrument):
         return self._portfolio.time(instrument)
@@ -45,6 +47,9 @@ class BaseStrategy(with_metaclass(ABCMeta)):
     def ask(self, instrument):
         return self._portfolio.ask(instrument)
 
+    def getcandles(self, instrument, granularity, count):
+        return self.hm.getcandles(instrument, granularity, count)
+    
     @property
     def name(self):
         return self._name
@@ -67,36 +72,12 @@ class BaseStrategy(with_metaclass(ABCMeta)):
         self._portfolio = value
 
     @property
-    def reqticks(self):
-        return self._reqticks
+    def hm(self):
+        return self._hm
 
-    @reqticks.setter
-    def reqticks(self, value):
-        self._reqticks = value
-
-    @property
-    def reqcandles(self):
-        return self._reqcandles
-
-    @reqcandles.setter
-    def reqcandles(self, value):
-        self._reqcandles = value
-
-    @property
-    def minticks(self):
-        return self._minticks
-
-    @minticks.setter
-    def minticks(self, value):
-        self._minticks = value
-
-    @property
-    def mincandles(self):
-        return self._mincandles
-
-    @mincandles.setter
-    def mincandles(self, value):
-        self._mincandles = value
+    @hm.setter
+    def hm(self, __hm):
+        self._hm = __hm
 
     @property
     def takeprofit(self):
@@ -233,52 +214,80 @@ class BaseStrategy(with_metaclass(ABCMeta)):
 
 class Strategy(with_metaclass(ABCMeta, BaseStrategy)):
     """class to run single currency strategy"""
-    def __init__(self, name, instrument, granularity, **kwargs):
-        if not isinstance(instrument, Instruments):
-            raise Exception("instrument needs to be an Instruments and not {}".format(type(instrument)))
+    def __init__(self, name, iglist, **kwargs):
 
-        self._volmode = False
-        if isinstance(granularity, Granularity):
-            self._granularity = granularity
-        elif isinstance(granularity, VolumeGranularity):
-            self._granularity = granularity
-            self._volmode = True
-        else:
-            raise Exception("Did not understood granularity. Type={}".format(type(granularity)))
-        self._instrument = instrument
+        for instrument, granularity in iglist:
+            if not isinstance(instrument, Instruments):
+                raise Exception("instrument needs to be an Instruments and not {}".format(type(instrument)))
+            if isinstance(granularity, Granularity):
+                pass
+            elif isinstance(granularity, VolumeGranularity):
+                pass
+            else:
+                raise Exception("Did not understood granularity. Type={}".format(type(granularity)))
+
+        self._iglist = iglist
+
+        self._ilist = set()
+        self._glist = set()
+        for i, g in self._iglist:
+            self._ilist.add(i)
+            self._glist.add(i)
+
+        self._ilist = sorted(self._ilist)
+        self._glist = sorted(self._glist)
+            
         self._units = kwargs.get('units', instrument.minimumTradeSize)
         super(Strategy, self).__init__(name, **kwargs)
 
-        logging.info("init %s on %s @ %s",
-                     self.name,
-                     self.instrument.name,
-                     self.granularity.name)
+        logging.info("init {} on".format(self.name))
+        for i, g in iglist:
+            logging.info("    {} @ {}".format(i.name, g.name))
+
     @property
     def fullname(self):
-        return '-'.join([self.name, self.instrument.name, self.granularity.name])
+        s = self.name
+        for i, g in self.iglist:
+            s = '-'.join([s, i.name, g.name])
+        return s
+
+    @property
+    def iglist(self):
+        return self._iglist
 
     @property
     def instrument(self):
-        return self._instrument
+        i, g = self._iglist[0]
+        return i
 
     @property
     def instruments(self):
-        return [self.instrument]
+        return self._ilist
 
     @property
     def granularity(self):
-        return self._granularity
+        i, g = self._iglist[0]
+        return g
 
+    @property
+    def granularities(self):
+        return self._glist
+
+    @property
+    def smallestgranularity(self):
+        return self.granularities[0]
+            
+    
     @property
     def units(self):
         return self._units
 
     @abstractmethod
-    def onTick(self, candles, cnt):
+    def onTick(self):
         pass
 
     @abstractmethod
-    def onCandle(self, candles, cnt):
+    def onCandle(self):
         pass
 
 
@@ -320,75 +329,3 @@ class TickStrategy(with_metaclass(ABCMeta, BaseStrategy)):
 
 
 
-class MultiInstrumentsStrategy(with_metaclass(ABCMeta, BaseStrategy)):
-    """class to run multiple currencies strategy"""
-    def __init__(self, name, instruments, granularity, **kwargs):
-        """MultiInstrumentsStrategy constructor
-        inputs:
-              name: string
-              instruments: List of Instruments
-              granularity: Granularity object
-        """
-        super(MultiInstrumentsStrategy, self).__init__(name, **kwargs)
-
-        for instrument in instruments:
-            if not isinstance(instrument, Instruments):
-                raise Exception("instrument needs to be an Instruments and not {}".format(type(instrument)))
-
-        self._instruments = instruments
-
-        self._volmode = False
-        if isinstance(granularity, Granularity):
-            self._granularity = granularity
-        else:
-            raise Exception("Did not understood granularity. Type={}".format(type(granularity)))
-
-    @property
-    def fullname(self):
-        _instruments = '-'.join([instrument.name for instrument in self.instruments])
-        return '-'.join([self.name, _instruments, self.granularity.name])
-
-    @property
-    def instruments(self):
-        return self._instruments
-
-    @property
-    def granularity(self):
-        return self._granularity
-
-    @abstractmethod
-    def onMultiCandle(self, candles, cnt):
-        """method is called at the close. Candles is a dictionary containing the Candles"""
-        pass
-
-
-
-class MultiGranularitiesStrategy(with_metaclass(ABCMeta, BaseStrategy)):
-    """ class to run over multiple granularites"""
-
-    def __init__(self, name, instrument, granularities, **kwargs):
-        """MultiGranularitiesStrategy constructor
-        inputs:
-              name: string
-              instrument: Instruments
-              granularities: List of Granularity object
-        """
-        super(MultiGranularitiesStrategy, self).__init__(name, **kwargs) 
-        self._instrument = instrument
-        self._granularities = sorted(granularities, key = lambda g: g.value)
-        
-    @property
-    def instrument(self):
-        return self._instrument
-
-    @property
-    def granularities(self):
-        return self._granularities
-
-    @abstractmethod
-    def onTick(self, candles, cnt):
-        pass
-
-    @abstractmethod
-    def onCandle(self, candles, cnt):
-        pass

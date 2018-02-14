@@ -15,11 +15,11 @@ import talib as ta
 
 from jwoanda.strategies.twosmas import TwoSMAsStrategy
 
-from jwoanda.backtests.simplebacktest import SimpleBacktest
-from jwoanda.backtests.candlesbacktest import CandlesBacktest
-from jwoanda.backtests.fullcandlesbacktest import FullCandlesBacktest
-from jwoanda.backtests.ticksbacktest import TicksBacktest
-from jwoanda.backtests.mcandlesbacktest import MCandlesBacktest
+#from jwoanda.backtests.simplebacktest import SimpleBacktest
+from jwoanda.backtests.backtest import Backtest
+#from jwoanda.backtests.fullcandlesbacktest import FullCandlesBacktest
+#from jwoanda.backtests.ticksbacktest import TicksBacktest
+#from jwoanda.backtests.mcandlesbacktest import MCandlesBacktest
 
 from jwoanda.enums import VolumeGranularity, Granularity
 from jwoanda.instenum import Instruments
@@ -44,8 +44,8 @@ def main():
     instruments = []
     for i in range(2, len(sys.argv)):
         instrument = Instruments[sys.argv[i]]
-        strat = TwoSMAsStrategy(instrument, granularity, units=1, shortperiod=30, longperiod=60, matype=ta.MA_Type.KAMA)
-        bt = CandlesBacktest(strat, "20160101", "20161231", saveportfolio=True, progressbar=True)
+        strat = TwoSMAsStrategy( [(instrument, granularity)], units=1, shortperiod=30, longperiod=60, matype=ta.MA_Type.KAMA)
+        bt = Backtest(strat, "20160101", "20161231", saveportfolio=True, progressbar=True)
         profit = bt.start()
         print(instrument.name, profit)
 

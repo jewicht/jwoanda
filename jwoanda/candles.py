@@ -24,113 +24,6 @@ from jwoanda.instenum import Instruments
 from jwoanda.enums import Granularity, VolumeGranularity
 from jwoanda.utils import get_items
 
-class MultiCandles(object):
-    """MultiCandles class: candles for many instruments"""
-
-    def __init__(self, instruments=None, granularity=None, size=1000, clist=None):
-        """MultiCandles constructor
-
-        Args:
-            instruments: list of Instruments enums
-            granularity: Granularity
-            size: starting size of Candles
-            clist: initialize the object using a dictionary {Instruments: Candles}
-        """
-        self._data = {}
-        if instruments is not None:
-            if isinstance(instruments[0], Instruments):
-                self._instruments = instruments
-            else:
-                raise Exception("Not a valid instrument: type={}.".format(type(instruments[0])))
-            for instrument in self._instruments:
-                self._data[instrument] = Candles(instrument=instrument, granularity=granularity, size=size)
-        if clist is not None:
-            self._instruments = []
-            for c in clist:
-                self._instruments.append(c.instrument)
-                self._data[c.instrument] = c
-                #print(type(c))
-
-
-    @property
-    def instruments(self):
-        return self._instruments
-
-
-    @property
-    def granularity(self):
-        return self.candles(self.instruments[0]).granularity
-
-
-    @property
-    def ncandles(self):
-        #print(type(self.candles(self.instruments[0])))
-        return self.candles(self.instruments[0]).ncandles
-
-
-    def candles(self, instrument):
-        return self._data[instrument]
-
-
-    def setcandles(self, instrument, data):
-        self._data[instrument] = data
-
-
-    def head(self, size, inplace=False):
-        ncandles = self._data[self._instruments[0]].ncandles
-        if size > ncandles:
-            size = ncandles
-
-        tmp = {}
-        for instrument in self._instruments:
-            tmp[instrument] = self._data[instrument].head(size)
-
-        if inplace:
-            self._data = tmp
-        else:
-            return tmp
-
-    def resize(self, size):
-        for instrument in self._instruments:
-            self._data[instrument].resize(size)
-
-
-    def tail(self, size, inplace=False, oneincomplete=0):
-        ncandles = self._data[self._instruments[0]].ncandles
-        if size > ncandles:
-            size = ncandles
-
-        tmp = {}
-        for instrument in self._instruments:
-            tmp[instrument] = self._data[instrument].tail(size, oneincomplete=oneincomplete)
-
-        if inplace:
-            self._data = tmp
-        else:
-            return tmp
-
-
-    def align(self):
-        dflist = []
-        for instrument, c in get_items(self._data):
-            dflist.append(c.DataFrame())
-
-        for cnt in range(0, len(dflist)):
-            print("cnt = ", cnt, " len = ", len(dflist[cnt]))
-
-        for cnt1, cnt2 in itertools.permutations(range(0, len(dflist)), 2):
-            df1, df2 = dflist[cnt1].align(dflist[cnt2])
-            dflist[cnt1] = df1
-            dflist[cnt2] = df2
-
-        for cnt in range(0, len(dflist)):
-            print("cnt = ", cnt, " len = ", len(dflist[cnt]))
-
-        for cnt, key in enumerate(self._data):
-            self._data[key] = Candles(instrument=self.instruments[cnt], granularity=self.granularity, df=dflist[cnt])
-
-
-
 class Candles(object):
     def __init__(self, instrument, granularity, size=1000, df=None, nparr=None, cdict=None):
 
@@ -180,7 +73,9 @@ class Candles(object):
     def resize(self, newsize):
         self._data = np.append(self._data, self.zerodata(newsize - len(self._data)))
 
-
+    def __len__(self):
+        return len(self._data)
+        
     @property
     def data(self):
         return self._data

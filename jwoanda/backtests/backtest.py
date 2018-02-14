@@ -13,12 +13,16 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 import numpy as np
 import pathlib
+from progressbar import Bar, ETA, Percentage, ProgressBar
 
 from jwoanda.strategy import BaseStrategy
 from jwoanda.portfolio.btportfolio import BTPortfolio
 from jwoanda.oandaaccount import oandaenv
+from jwoanda.history import BTHistoryManager
 
-class Backtest(object, with_metaclass(ABCMeta)):
+
+
+class BaseBacktest(object, with_metaclass(ABCMeta)):
 
     def __init__(self, strategy, start, end, **kwargs):
         if not isinstance(strategy, BaseStrategy):
@@ -208,3 +212,44 @@ class Backtest(object, with_metaclass(ABCMeta)):
         f = lzma.open(filename, mode='wb')
         pickle.dump(cdict, f)
         f.close()
+
+
+
+class Backtest(BaseBacktest):
+
+    def __init__(self, strategy, start, end, **kwargs):
+        super(Backtest, self).__init__(strategy, start, end, **kwargs)
+
+        self.bthm = BTHistoryManager(strategy.iglist, start, end)
+        self.strategy.hm = self.bthm
+        
+    def start(self):
+        if self.showprogressbar:
+            pbar = ProgressBar(widgets=['Backtesting: ',
+                                        Percentage(),
+                                        Bar(),
+                                        ETA()],
+                               min_value=self.bthm.mintime(),
+                               max_value=self.bthm.maxtime())
+        while self.bthm.iteratetime():
+            if self.showprogressbar:
+                pbar.update(self.bthm.currtime())
+
+            for i, g in self.strategy.iglist:
+                candle = self.bthm.getcandles(i, g, 1)
+                if candle is not None:
+                    candle = candle[0]
+                    self.randomtickgenerator(candle, i)
+                    self.portfolio.setprice(i, (candle['time'], candle['closeBid'], candle['closeAsk']))
+            self.strategy.onCandle()
+
+        if self.showprogressbar:
+            pbar.finish()
+
+        if self.saveportfolio:
+            self.save()
+
+        trades = self.portfolio.trades
+        pl = np.sum(trades["pl"])
+
+        return pl, self.portfolio.ntrades

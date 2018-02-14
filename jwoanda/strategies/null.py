@@ -1,17 +1,17 @@
 import logging
 from datetime import datetime
 
-from jwoanda.strategy import Strategy, MultiInstrumentsStrategy
+from jwoanda.strategy import Strategy
 from jwoanda.history import floattostr
 
 class NullStrategy(Strategy):
-    def __init__(self, instrument, granularity, **kwargs):
+    def __init__(self, iglist, **kwargs):
         super(NullStrategy, self).__init__("NullStrategy",
-                                           instrument,
-                                           granularity,
+                                           iglist,
                                            **kwargs)
 
-    def onTick(self, candles, cnt):
+    def onTick(self):
+        return
         lastcandle = candles[cnt]
         logging.info("onTick instrument=%s, time=%s, open=%s, high=%s, low=%s, close=%s, volume=%s",
                      self.instrument.name,
@@ -25,8 +25,11 @@ class NullStrategy(Strategy):
         return
 
 
-    def onCandle(self, candles, cnt):
-        lastcandle = candles[cnt]
+    def onCandle(self):
+        candles = self.getcandles(self.instrument, self.granularity, 1)
+        if candles is None:
+            return
+        lastcandle = candles[0]
         logging.info("onCandle instrument=%s, time=%s, open=%s, high=%s, low=%s, close=%s, volume=%s",
                      self.instrument.name,
                      datetime.fromtimestamp(lastcandle['time']),
@@ -40,23 +43,25 @@ class NullStrategy(Strategy):
 
 
 
-class NullMultiStrategy(MultiInstrumentsStrategy):
-    def __init__(self, instruments, granularity, **kwargs):
+class NullMultiStrategy(Strategy):
+    def __init__(self, iglist, **kwargs):
         super(NullMultiStrategy, self).__init__("MultiNullStrategy",
-                                                instruments,
-                                                granularity,
+                                                iglist,
                                                 **kwargs)
 
-    def onMultiCandle(self, candles, cnt):
-        for instrument in self.instruments:
-            lastcandle = candles[instrument][cnt]
-            logging.info("onMultiCandle instrument=%s, time=%s, open=%s, high=%s, low=%s, close=%s, volume=%s",
+    def onCandle(self):
+        for i, g in self.iglist:
+            lastcandle = self.getcandles(i, g, 1)
+            if lastcandle is None:
+                continue
+            lastcandle = lastcandle[0]
+            logging.info("onCandle instrument=%s, time=%s, open=%s, high=%s, low=%s, close=%s, volume=%s",
                          instrument.name,
                          datetime.fromtimestamp(lastcandle['time']),
-                         floattostr(lastcandle['openAsk'], instrument.displayPrecision),
-                         floattostr(lastcandle['highAsk'], instrument.displayPrecision),
-                         floattostr(lastcandle['lowAsk'], instrument.displayPrecision),
-                         floattostr(lastcandle['closeAsk'], instrument.displayPrecision),
+                         floattostr(lastcandle['openAsk'], i.displayPrecision),
+                         floattostr(lastcandle['highAsk'], i.displayPrecision),
+                         floattostr(lastcandle['lowAsk'], i.displayPrecision),
+                         floattostr(lastcandle['closeAsk'], i.displayPrecision),
                          floattostr(lastcandle['volume'], 0))
         return
 

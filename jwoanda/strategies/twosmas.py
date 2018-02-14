@@ -6,8 +6,8 @@ import talib as ta
 import numpy as np
 
 class TwoSMAsStrategy(Strategy):
-    def __init__(self, instrument, granularity, **kwargs):
-        super(TwoSMAsStrategy, self).__init__("TwoSMAsStrategy", instrument, granularity, **kwargs)
+    def __init__(self, iglist, **kwargs):
+        super(TwoSMAsStrategy, self).__init__("TwoSMAsStrategy", iglist, **kwargs)
         ##self.invested = 0
         self.tradeId = -1
         self.smas = 0
@@ -36,28 +36,33 @@ class TwoSMAsStrategy(Strategy):
         self.indicators[:, 2] = self.mva
 
 
-    def onTick(self, ticks, cnt):
+    def onTick(self):
         pass
 
 
-    def onCandle(self, candles, cnt):
-        if not self.modeBT:
-            self.calcIndicators(candles)
+    def onCandle(self):
 
-        lastcandle = candles[cnt]
+        candles = self.getcandles(self.instrument, self.granularity, self.options['longperiod'] + 2)
+
+        if candles is None:
+            return
+        
+        lastcandle = candles[-1]
         closeBid = lastcandle['closeBid']
         closeAsk = lastcandle['closeAsk']
         time = lastcandle['time']
 
+        self.calcIndicators(candles)
+            
+        smashortprev = self.smal[-2]
+        smashort = self.smal[-1]
 
-        smashortprev = self.smal[cnt - 1]
-        smashort = self.smal[cnt]
+        smalongprev = self.smas[-2]
+        smalong = self.smas[-1]
+        rsi = self.rsi[-1]
+        
 
-        smalongprev = self.smas[cnt - 1]
-        smalong = self.smas[cnt]
-
-
-        if (smashort > smalong) and (smashortprev < smalongprev) and (self.rsi[cnt] < 0.25):
+        if (smashort > smalong) and (smashortprev < smalongprev) and (rsi < 0.25):
             #go long, close short first
             #print("go long ", time, smashort, smalong)
             if self.tradeId > -1:
@@ -71,7 +76,7 @@ class TwoSMAsStrategy(Strategy):
             logging.debug("Open long = %d", self.tradeId)
             ##self.invested = +1
             return
-        if (smashort < smalong) and (smashortprev > smalongprev) and (self.rsi[cnt] > 0.75):
+        if (smashort < smalong) and (smashortprev > smalongprev) and (rsi > 0.75):
             #go short, close long first
             #print("go short ", time, smashort, smalong)
             if self.tradeId > -1:
