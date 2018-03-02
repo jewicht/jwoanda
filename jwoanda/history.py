@@ -9,7 +9,6 @@ import v20
 
 from jwoanda.resizebyvolume import resizebyvolume_cython
 from jwoanda.candles import Candles
-from jwoanda.multicandles import MultiCandles
 from jwoanda.enums import Granularity, VolumeGranularity
 from jwoanda.instenum import Instruments
 from jwoanda.oandaaccount import oandaenv
@@ -95,17 +94,6 @@ class BTHistoryManager(BaseHistoryManager):
             return True
         else:
             return False
-
-    
-
-def getmulticandles(instruments, gran, start, end):
-    clist = []
-    for instrument in instruments:
-        candles = getcandles(instrument, gran, start, end)
-        clist.append(candles)
-    mcandles = MultiCandles(clist=clist)
-    mcandles.align()
-    return mcandles
 
 
 def getcandles(instrument, gran, start, end):
