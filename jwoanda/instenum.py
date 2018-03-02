@@ -129,7 +129,6 @@ class Instruments(Enum):
     XPD_USD = (121, "METAL", "Palladium", -2, 3, 0, 1.0, 100.0, 0.05, 0.0, 5000.0, 0.05)
     XPT_USD = (122, "METAL", "Platinum", -2, 3, 0, 1.0, 100.0, 0.05, 0.0, 5000.0, 0.05)
     ZAR_JPY = (123, "CURRENCY", "ZAR/JPY", -2, 3, 0, 1.0, 100.0, 0.05, 0.0, 100000000.0, 0.02)
-    none = (124, "none", "none", 0, 0, 0, 0, 0, 0, 0, 0, 0.0)
 
 
     def __init__(self,
