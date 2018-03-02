@@ -2,9 +2,9 @@ from __future__ import print_function
 
 import logging
 try:
-    import lzma
-except ImportError:
     from backports import lzma
+except:
+    import lzma
 import pickle
 import os
 

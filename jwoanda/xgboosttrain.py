@@ -1,7 +1,7 @@
 try:
-    import lzma
-except ImportError:
     from backports import lzma
+except:
+    import lzma
 try:
     import cPickle as pickle
 except:

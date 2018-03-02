@@ -5,9 +5,9 @@ try:
 except:
     import pickle
 try:
-    import lzma
-except ImportError:
     from backports import lzma
+except:
+    import lzma
 import itertools
 import os
 import sys

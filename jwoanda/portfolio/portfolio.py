@@ -3,9 +3,9 @@ from abc import ABCMeta, abstractmethod
 import logging
 import threading
 try:
-    import lzma
-except ImportError:
     from backports import lzma
+except:
+    import lzma
 try:
     import cPickle as pickle
 except:

@@ -1,9 +1,9 @@
 import os
 import sys
 try:
-    import lzma
-except ImportError:
     from backports import lzma
+except ImportError:
+    import lzma
 import logging
 try:
     import cPickle as pickle
