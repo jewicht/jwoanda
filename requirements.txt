@@ -1,0 +1,13 @@
+numpy
+matplotlib
+pandas
+pathlib2
+progressbar2
+scipy
+six
+TA-lib
+v20
+pyxdg
+PyYAML
+backports_abc; python_version < '3.0'
+backports.lzma; python_version < '3.0'
