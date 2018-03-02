@@ -16,13 +16,14 @@ from jwoanda.oandaaccount import oandaenv
 
 
 def floattostr(x, n):
-    return "{x:.{n}f}".format(x=x, n=n)
+    return "{:.{}f}".format(x, n)
 
 
 class BaseHistoryManager(object, with_metaclass(ABCMeta)):
     def __init__(self):
         self._indicies = {}
         self._candles = {}
+
 
     def getcandles(self, i, g, count):
         idx = self._indicies[(i,g)]
@@ -31,9 +32,37 @@ class BaseHistoryManager(object, with_metaclass(ABCMeta)):
         return self._candles[(i, g)]._data[idx-count:idx]
 
 
+    @abstractmethod
+    def currtime(self):
+        pass
+
+
 class RealHistoryManager(BaseHistoryManager):
-    def __init__(self):
+    def __init__(self, iglist):
         super(RealHistoryManager, self).__init__()
+        self._ready = {}
+        for i, g in iglist:
+            self._candles[(i,g)] = Candles(i, g)
+            self._indicies[(i,g)] = 0
+            self._ready[(i,g)] = False
+
+
+    def isready(self, i, g):
+        return self._ready[(i,g)]
+
+
+    def setready(self, i, g, b):
+        self._ready[(i,g)] = b
+
+
+    def addCandle(self, i, g, candle):
+        self._candles[(i,g)].add(candle)
+        self._indicies[(i,g)] += 1
+
+
+    def currtime(self):
+        return float(datetime.now().strftime('%s.%f'))
+
 
 
 class BTHistoryManager(BaseHistoryManager):
@@ -48,7 +77,7 @@ class BTHistoryManager(BaseHistoryManager):
 
     def currtime(self):
         return self._candles[self._first].data[self._indicies[self._first]]['time']
-    
+
     def mintime(self):
         c = self._candles[self._first]
         return c.data[0]['time']

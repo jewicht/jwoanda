@@ -2,8 +2,11 @@ import copy
 from abc import ABCMeta, abstractmethod
 import logging
 from six import with_metaclass
+from datetime import datetime
 
-from jwoanda.enums import Granularity, VolumeGranularity
+import numpy as np
+
+from jwoanda.enums import Granularity
 from jwoanda.portfolio.portfolio import Portfolio
 from jwoanda.portfolio.btportfolio import BTPortfolio
 from jwoanda.instenum import Instruments
@@ -27,7 +30,8 @@ class BaseStrategy(with_metaclass(ABCMeta)):
         self.options['trailingstop'] = kwargs.get("trailingstop", 0.)
         self.options['takeprofit'] = kwargs.get("takeprofit", 0.)
         self.options['stoploss'] = kwargs.get("stoploss", 0.)
-
+        self.options['lifetime'] = kwargs.get("lifetime", 0.)
+        
         self.options.update(kwargs)
         
         self._mincandles = kwargs.get("mincandles", 1)
@@ -36,10 +40,31 @@ class BaseStrategy(with_metaclass(ABCMeta)):
         self._reqticks = kwargs.get("reqticks", 1000)
 
         self._hm = None
-        
 
-    def time(self, instrument):
-        return self._portfolio.time(instrument)
+
+    @property
+    def time(self):
+        return self.hm.currtime()
+
+    @property
+    def dayoftheweek(self):
+        return datetime.fromtimestamp(self.time).isoweekday()
+
+    @property
+    def hour(self):
+        return datetime.fromtimestamp(self.time).hour
+
+    @property
+    def minute(self):
+        return datetime.fromtimestamp(self.time).minute
+        
+    def lasttick(self, instrument):
+        return (self._portfolio.time(instrument),
+                self._portfolio.bid(instrument),
+                self._portfolio.ask(instrument))
+        
+    # def time(self, instrument):
+    #     return self._portfolio.time(instrument)
 
     def bid(self, instrument):
         return self._portfolio.bid(instrument)
@@ -133,6 +158,7 @@ class BaseStrategy(with_metaclass(ABCMeta)):
         stoploss = kwargs.get("stoploss", self.options['stoploss'])
         takeprofit = kwargs.get("takeprofit", self.options['takeprofit'])
         trailingstop = kwargs.get("trailingstop", self.options['trailingstop'])
+        lifetime = kwargs.get("lifetime", self.options['lifetime'])
         newargs = {}
         if stoploss > 0.:
             newargs['stoploss'] = self.calcSL(stoploss, instrument, units)
@@ -140,7 +166,9 @@ class BaseStrategy(with_metaclass(ABCMeta)):
             newargs['takeprofit'] = self.calcTP(takeprofit, instrument, units)
         if trailingstop > 0.:
             newargs['trailingstop'] = trailingstop
-            
+        if lifetime > 0.:
+            newargs['lifetime'] = lifetime
+
         return self._portfolio.openposition(self.name,
                                             instrument,
                                             units,
@@ -210,18 +238,47 @@ class BaseStrategy(with_metaclass(ABCMeta)):
                     return self.marginCalculator(instr, units)
             return -1
 
+    @staticmethod
+    def crossabove(ma1, ma2):
+        if (isinstance(ma2, float) or isinstance(ma2, np.float)):
+            ma2p = ma2
+            ma2pp = ma2
+        else:
+            ma2p = ma2[-1]
+            ma2pp = ma2[-2]
+            
+        if (ma1[-1] > ma2p) and (ma1[-2] < ma2pp):
+            return True
+        else:
+            return False
+        
+    @staticmethod
+    def crossbelow(ma1, ma2):
+        if (isinstance(ma2, float) or isinstance(ma2, np.float)):
+            ma2p = ma2
+            ma2pp = ma2
+        else:
+            ma2p = ma2[-1]
+            ma2pp = ma2[-2]
+            
+        if (ma1[-1] < ma2p) and (ma1[-2] > ma2pp):
+            return True
+        else:
+            return False
 
 
 class Strategy(with_metaclass(ABCMeta, BaseStrategy)):
     """class to run single currency strategy"""
     def __init__(self, name, iglist, **kwargs):
-
+        super(Strategy, self).__init__(name, **kwargs)
+        
+        if isinstance(iglist, tuple):
+            iglist = [iglist]
+        
         for instrument, granularity in iglist:
             if not isinstance(instrument, Instruments):
                 raise Exception("instrument needs to be an Instruments and not {}".format(type(instrument)))
             if isinstance(granularity, Granularity):
-                pass
-            elif isinstance(granularity, VolumeGranularity):
                 pass
             else:
                 raise Exception("Did not understood granularity. Type={}".format(type(granularity)))
@@ -232,17 +289,19 @@ class Strategy(with_metaclass(ABCMeta, BaseStrategy)):
         self._glist = set()
         for i, g in self._iglist:
             self._ilist.add(i)
-            self._glist.add(i)
+            self._glist.add(g)
 
-        self._ilist = sorted(self._ilist)
+        #self._ilist = sorted(self._ilist)
         self._glist = sorted(self._glist)
             
         self._units = kwargs.get('units', instrument.minimumTradeSize)
-        super(Strategy, self).__init__(name, **kwargs)
 
-        logging.info("init {} on".format(self.name))
+        s = ""
         for i, g in iglist:
-            logging.info("    {} @ {}".format(i.name, g.name))
+            s += "{} @ {}".format(i.name, g.name)
+            
+        logging.info("init {} on {}".format(self.name, s))
+        
 
     @property
     def fullname(self):

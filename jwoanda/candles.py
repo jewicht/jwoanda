@@ -12,7 +12,7 @@ import itertools
 import os
 import sys
 import logging
-import pathlib
+import pathlib2
 from datetime import datetime
 
 import numpy as np
@@ -21,7 +21,7 @@ import v20
 from xdg import BaseDirectory
 
 from jwoanda.instenum import Instruments
-from jwoanda.enums import Granularity, VolumeGranularity
+from jwoanda.enums import Granularity
 from jwoanda.utils import get_items
 
 class Candles(object):
@@ -113,7 +113,7 @@ class Candles(object):
 
     @granularity.setter
     def granularity(self, granularity):
-        if isinstance(granularity, Granularity) or isinstance(granularity, VolumeGranularity):
+        if isinstance(granularity, Granularity):# or isinstance(granularity, VolumeGranularity):
             self._granularity = granularity
         else:
             raise Exception("Not a valid granularity: type={}".format(type(granularity)))
@@ -188,7 +188,7 @@ class Candles(object):
 
         pythonver = "py%d%d" % (sys.version_info.major, sys.version_info.minor)
         directory = os.path.join(datadir, "history", self.instrument.name)
-        pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+        pathlib2.Path(directory).mkdir(parents=True, exist_ok=True)
 
         filename = "%s/%s-%s-%s-%s.history" % (directory, self.instrument.name, self.granularity.name, year, pythonver)
         return filename

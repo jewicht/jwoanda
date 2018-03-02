@@ -27,6 +27,7 @@ class BTPortfolio(Portfolio):
         stoploss = kwargs.get("stoploss", 0.)
         takeprofit = kwargs.get("takeprofit", 0.)
         trailingstop = kwargs.get("trailingstop", 0.)
+        lifetime = kwargs.get("lifetime", 0.)
         tsextrema = 0.
 
         price = ask if units > 0 else bid
@@ -48,6 +49,7 @@ class BTPortfolio(Portfolio):
                                 stoploss=stoploss,
                                 takeprofit=takeprofit,
                                 trailingstop=trailingstop,
+                                lifetime=lifetime,
                                 tsextrema=tsextrema)
 
         return tradeID

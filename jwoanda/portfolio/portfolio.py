@@ -15,7 +15,7 @@ import os
 import sys
 from datetime import datetime
 from six import with_metaclass
-import pathlib
+import pathlib2
 
 import numpy as np
 import v20
@@ -34,7 +34,12 @@ class Portfolio(with_metaclass(ABCMeta)):
         self._ntrades = 0
 
         self._account = v20.account.AccountSummary()
-        self._prices = np.zeros(len(Instruments), [('time', np.float64), ('bid', np.float64), ('ask', np.float64)])
+        self._prices = np.zeros(len(Instruments),
+                                [('time', np.float64),
+                                 ('bid', np.float64),
+                                 ('ask', np.float64),
+                                 ('tradeable', np.bool)
+                                ])
         self._positions = np.zeros(len(Instruments), [('units', np.int32)])
         self._startdate = datetime.now()
 
@@ -74,6 +79,14 @@ class Portfolio(with_metaclass(ABCMeta)):
         self._ntrades = value
 
 
+    def settradeable(self, instrument, b):
+        self._prices[instrument.ID]['tradeable'] = b
+
+
+    def istradeable(self, instrument):
+        return self._prices[instrument.ID]['tradeable']
+
+
     def zerodata(self, size):
         return np.zeros(size, dtype=[('status', np.uint8),
                                      ('instrument', 'U10'),
@@ -93,6 +106,7 @@ class Portfolio(with_metaclass(ABCMeta)):
                                      ('stoploss', np.float64),
                                      ('takeprofit', np.float64),
                                      ('trailingstop', np.float64),
+                                     ('lifetime', np.float64),
                                      ('tsextrema', np.float64),
                                      ('oandaID', np.uint64)])
 
@@ -118,6 +132,7 @@ class Portfolio(with_metaclass(ABCMeta)):
         order["stoploss"] = kwargs.get('stoploss', 0.)
         order["takeprofit"] = kwargs.get('takeprofit', 0.)
         order["trailingstop"] = kwargs.get('trailingstop', 0.)
+        order["lifetime"] = kwargs.get('lifetime', 0.)
         order["tsextrema"] = kwargs.get('tsextrema', 0.)
         order["oandaID"] = kwargs.get('oandaID', -1)
 
@@ -198,7 +213,7 @@ class Portfolio(with_metaclass(ABCMeta)):
             datadir = oandaenv.datadir
             directory = os.path.expanduser(os.path.join(datadir, "portfolios"))
 
-        pathlib.Path(directory).mkdir(parents=True, exist_ok=True)    
+        pathlib2.Path(directory).mkdir(parents=True, exist_ok=True)    
 
         if filename is None:
             filename = self.picklename()
@@ -273,6 +288,12 @@ class Portfolio(with_metaclass(ABCMeta)):
             if order['instrument'] != instrument.name:
                 continue
 
+            #lifetime
+            if order['lifetime'] > 0. and (time - order['opentime'] > order['lifetime']):            
+                self.closeposition(tradeID, ExitReason.LIFETIME)
+                continue
+
+            #check StopLoss, TakeProfit, TrailingStop
             if order['units'] > 0: # long
                 if order["stoploss"] > 0:
                     if bid < order["stoploss"]:

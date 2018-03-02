@@ -1,114 +1,60 @@
 import logging
-
-from abc import ABCMeta, abstractmethod
-from six import with_metaclass
+import threading
 
 from jwoanda.enums import Events
-from jwoanda.strategy import MultiInstrumentsStrategy, TickStrategy
+from jwoanda.strategy import Strategy, TickStrategy
 
 
-class BaseStrategyTrading(with_metaclass(ABCMeta)):
-    def __init__(self, strategy, cmt, **kwargs):
+class StrategyTrading(threading.Thread):
+    def __init__(self, strategy, evr):
+        super(StrategyTrading, self).__init__(name="_".join(["StrategyTrading", strategy.name]))
+        self.kill = False
         self.strategy = strategy
-        self.cmt = cmt
+        self.evr = evr
 
 
-    @abstractmethod
-    def tickEvent(self):
-        pass
+    def run(self):
+        stop = threading.Event()
+        while not self.kill:
+            self.evr.wait()
+            if self.kill:
+                return
+            try:
+                self.strategy.onCandle()
+            except:
+                logging.exception("your strategy crashed in onCandle")
+            stop.wait(1)
 
 
-    @abstractmethod
-    def candleEvent(self):
-        pass
-    
-
-    
-class StrategyTrading(BaseStrategyTrading):
-    def __init__(self, strategy, cmt, **kwargs):
-        super(StrategyTrading, self).__init__(strategy, cmt)
-
-
-    def tickEvent(self):
-        mcandles = self.cmt.mcandles
-        ncandles = mcandles.ncandles
-        reqcandles = self.strategy.reqcandles
-        mincandles = self.strategy.mincandles
-
-        candles = mcandles.tail(reqcandles, oneincomplete=1)
-        ocandles = candles[self.strategy.instrument].data.view()
-        ocandles.flags.writeable = False
-        try:
-            self.strategy.onTick(ocandles, ocandles.size - 1)
-        except:
-            logging.exception("your strategy crashed in onTick")
-
-
-    def candleEvent(self):
-        candles = self.cmt.mcandles.candles(self.strategy.instrument)
-        
-        ncandles = candles.ncandles
-        reqcandles = self.strategy.reqcandles
-        mincandles = self.strategy.mincandles
-        
-        #logging.debug("ncandles = {} reqcandles = {} mincandles = {}".format(ncandles, reqcandles, mincandles))
-        if mincandles > ncandles -1:
-            return
-        tcandles = candles.tail(reqcandles)
-        size = tcandles.data.size
-        ocandles = tcandles.data.view()
-        ocandles.flags.writeable = False
-        try:
-            self.strategy.onCandle(ocandles, ocandles.size - 1)
-        except:
-            logging.exception("your strategy crashed in onCandle")
+    def disconnect(self):
+        self.kill = True
+        self.evr.set()
 
 
 
-class MultiStrategyTrading(BaseStrategyTrading):
-    def __init__(self, strategy, cmt, **kwargs):
-        super(MultiStrategyTrading, self).__init__(strategy, cmt)
+class TickStrategyTrading(threading.Thread):
+    def __init__(self, strategy, tickQueue):
+        super(TickStrategyTrading, self).__init__(name="_".join(["StrategyTrading", strategy.name]))
+        self.kill = False
+        self.strategy = strategy
+        self.tickQueue = tickQueue
 
 
-    def tickEvent(self):
-        pass
+    def run(self):
+        while not self.kill:
+            e = self.tickQueue.get()
+            if e['type'] == Events.TICK:
+                try:
+                    self.strategy.onTick(e['tick'])
+                except:
+                    logging.exception("your strategy crashed in onTick")
+            elif e['type'] == Events.KILL:
+                self.kill = True
+                break
+            else:
+                pass
 
 
-    def candleEvent(self):
-        mcandles = self.cmt.mcandles
-        ncandles = mcandles.ncandles
-        reqcandles = self.strategy.reqcandles
-        mincandles = self.strategy.mincandles
-
-        #logging.debug("ncandles = {} reqcandles = {} mincandles = {}".format(ncandles, reqcandles, mincandles))
-        if mincandles > ncandles -1:
-            return
-        candles = mcandles.tail(reqcandles)
-        size = candles[self.strategy.instruments[0]].data.size
-
-        cdict = {}
-        for instrument in self.strategy.instruments:
-            cc = candles[instrument].data.view()
-            cc.flags.writeable = False
-            cdict[instrument] = cc
-        try:
-            self.strategy.onMultiCandle(cdict, size - 1)
-        except:
-            logging.exception("your strategy crashed in onMultiCandle")
-
-
-
-class TickStrategyTrading(BaseStrategyTrading):
-    def __init__(self, strategy, cmt, **kwargs):
-        super(TickStrategyTrading, self).__init__(strategy, cmt)
-
-
-    def tickEvent(self, tick):
-        try:
-            self.strategy.onTick(tick)
-        except:
-            pass
-
-
-    def candleEvent(self):
-        pass
+    def disconnect(self):
+        self.kill = True
+        self.tickQueue.put({'type': Events.KILL})

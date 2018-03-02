@@ -10,11 +10,9 @@ except:
     from Queue import Queue
 
 from jwoanda.history import downloadcandles, downloadhistoricaldata, resizebyvolume, floattostr
-from jwoanda.multicandles import MultiCandles
-from jwoanda.ticks import MultiTicks
-from jwoanda.enums import Granularity, VolumeGranularity, Events
-from jwoanda.strategy import TickStrategy, MultiInstrumentsStrategy
-from jwoanda.strategytrading import StrategyTrading, MultiStrategyTrading, TickStrategyTrading
+from jwoanda.enums import Granularity, Events
+from jwoanda.strategy import TickStrategy, Strategy
+from jwoanda.strategytrading import StrategyTrading, TickStrategyTrading
 from jwoanda.oandaaccount import oandaenv
 
 class CandleMakerHelper(object):
@@ -22,7 +20,6 @@ class CandleMakerHelper(object):
 
         self.kill = False
         self.stop = Event()
-        self.volmode = False
 
         self.strategy = strategy
         self.gran = strategy.granularity
@@ -40,14 +37,6 @@ class CandleMakerHelper(object):
             self.cmt = CandleMakerThread(self.strategy,
                                          self.tickQueue,
                                          name=self.name.replace('Helper', ''))
-        elif isinstance(self.gran, VolumeGranularity):
-            self.volmode = True
-            if len(self.instruments) > 1:
-                raise Exception("Too many instruments for volume mode")
-
-            self.cmt = CandleMakerThread(self.strategy,
-                                         self.tickQueue,
-                                         name=self.name.replace('Helper', ''))
         else:
             raise Exception("Do not understand granularity")
 
@@ -59,18 +48,17 @@ class CandleMakerHelper(object):
         while not self.kill:
 
             timetowait = 10
-            if not self.volmode and not self.tickmode:
+            if not self.tickmode:
                 now = datetime.now()
                 seconds_since_midnight = (now - now.replace(hour=0,
                                                             minute=0,
                                                             second=0,
                                                             microsecond=0)).total_seconds()
-                #sleep(self.period - (seconds_since_midnight % self.period))
                 timetowait = self.period - (seconds_since_midnight % self.period)
             self.stop.wait(timetowait)
             if self.kill:
                 return
-            if not self.volmode and not self.tickmode:
+            if not self.tickmode:
                 self.cmt.makeCandle()
 
             if not self.cmt.isAlive():
@@ -130,29 +118,17 @@ class CandleMakerThread(threading.Thread):
         self.instruments = strategy.instruments
         self.granularity = strategy.granularity
         self.kill = False
-        self.resumefromhistory = resumefromhistory
-
-        self.volmode = False
-        if isinstance(self.granularity, VolumeGranularity):
-            self.volmode = True
-            self.maxvolume = self.granularity.volume
-            
+        self.resumefromhistory = resumefromhistory            
 
         self.tickmode = (self.granularity == Granularity.NONE)
         if not self.tickmode:
             self.mcandles = MultiCandles(instruments=self.instruments, granularity=self.granularity, size=10)
-            #        else:
-            #            self.ticks = MultiTicks(instruments=self.instruments, size=1000000)
         self.iC = 0
 
         if isinstance(self.strategy, TickStrategy):
             self.tt = TickStrategyTrading(self.strategy,
                                           self,
                                           name='_'.join(["Trading", self.strategy.name]))
-        elif isinstance(self.strategy, MultiInstrumentsStrategy):
-            self.tt = MultiStrategyTrading(self.strategy,
-                                           self,
-                                           name='_'.join(["Trading", self.strategy.name]))
         else:
             self.tt = StrategyTrading(self.strategy,
                                       self,
@@ -164,38 +140,12 @@ class CandleMakerThread(threading.Thread):
     def gethistory(self):
         #get history and resume from there
         for instrument in self.instruments:
-            if not self.volmode:
-                candles = downloadcandles(instrument.name, self.granularity.name, 200)
-
-
-                if candles is not None:
-                    logging.info("We received %d candles", len(candles))
-                    self.mcandles.candles(instrument).fill(candles)
-
-                else:
-                    logging.error("We couldn't get history!")
-
+            candles = downloadcandles(instrument.name, self.granularity.name, 200)
+            if candles is not None:
+                logging.info("We received %d candles", len(candles))
+                self.mcandles.candles(instrument).fill(candles)
             else:
-                #download last day data
-                end_date = float(datetime.utcnow().strftime("%s"))
-                start_date = end_date - 3. * 24 * 60 * 60
-                end_date += 24 * 60 * 60
-                candles = downloadhistoricaldata(instrument, Granularity.S5, start_date, end_date, showpbar=False)
-                #candles = downloadcandles(instrument.name, Granularity.S5.name, 5000)
-
-                if candles is not None:
-                    logging.info("We received %d candles", candles.ncandles)
-
-                    #tmp = Candles(instrument=instrument, granularity=Granularity.S5, size=100000)
-                    #tmp.fill(candles)
-
-                    tmp = resizebyvolume(candles, self.maxvolume)
-                    tmp.resize(100000)
-
-                    self.mcandles = MultiCandles(clist=[tmp])
-
-                else:
-                    logging.error("We couldn't get history!")
+                logging.error("We couldn't get history!")
 
 
         #resume from history
@@ -224,7 +174,6 @@ class CandleMakerThread(threading.Thread):
                       floattostr(ask-bid, instrument.displayPrecision))
 
         if self.tickmode:
-            #self.ticks.ticks(instrument).add((time, bid, ask))
             self.tt.tickEvent((time, bid, ask))
             return
 
@@ -252,10 +201,6 @@ class CandleMakerThread(threading.Thread):
 
         thiscandle['volume'] += 1
         self.tt.tickEvent()
-
-        if self.volmode:
-            if thiscandle['volume'] >= self.maxvolume:
-                self.makeCandle()
 
 
     def run(self):

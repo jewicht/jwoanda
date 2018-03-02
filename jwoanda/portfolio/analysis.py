@@ -11,6 +11,9 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from datetime import datetime
+from scipy.stats import linregress, kde
+
 from jwoanda.portfolio.analysisfcn import drawdown
 from jwoanda.enums import ExitReason, PositionStatus
 from jwoanda.instenum import Instruments
@@ -74,23 +77,61 @@ class Analysis(object):
                 hlist.append(patches[0])
         ax.legend(handles=hlist)        
 
-
-    def plotprofit(self, alltrades, longtrades, shorttrades):
-        fig, ax = plt.subplots(2, 3, figsize=(30, 10))
-
-        self._histoplot(ax[0, 0], alltrades)
-        ax[0, 0].set_title('All trades')
-        ax[1, 0].plot(self.portfolio.initialbalance + np.cumsum(alltrades['pl']))
-        #ax[1, 0].plot(alltrades[
-
-        self._histoplot(ax[0, 1], longtrades)
-        ax[0, 1].set_title('long trades')
-        ax[1, 1].plot(self.portfolio.initialbalance + np.cumsum(longtrades['pl']))
+    def fitandplot(self, ax, x, y):
+        slope, intercept, r_value, p_value, std_err = linregress(x, y)
+        ax.plot(x, intercept + slope*x, 'r')
+        ax.plot(x, 0.*x, 'C0')
         
-        self._histoplot(ax[0, 2], shorttrades)
-        ax[0, 2].set_title('short trades')
-        ax[1, 2].plot(self.portfolio.initialbalance + np.cumsum(shorttrades['pl']))
         
+    def subplot(self, ax, trades, col, title, axeslabels=False, fontsize=12):
+        self._histoplot(ax[0, col], trades)
+        ax[0, col].set_title(title)#, fontsize=fontsize)
+        ax[1, col].plot(self.portfolio.initialbalance + np.cumsum(trades['pl']))
+
+        
+        x = (trades['closetime']-trades['opentime'])/3600.
+        logging.info("longest trade = %f hours", np.max(x))
+        y = trades['pl']
+
+        self.fitandplot(ax[2, col], x, y)
+        
+        nbins=50
+        try:
+            k = kde.gaussian_kde([x,y])
+            xi, yi = np.mgrid[x.min():x.max():nbins*1j, y.min():y.max():nbins*1j]
+            zi = k(np.vstack([xi.flatten(), yi.flatten()]))
+            ax[2, col].pcolormesh(xi, yi, zi.reshape(xi.shape))
+        except:
+            pass
+
+        x = np.array([datetime.fromtimestamp(x).hour + datetime.fromtimestamp(x).minute * 100. / 60. for x in trades['opentime']])
+        self.fitandplot(ax[3, col], x, y)
+        try:
+            k = kde.gaussian_kde([x,y])
+            xi, yi = np.mgrid[x.min():x.max():nbins*1j, y.min():y.max():nbins*1j]
+            zi = k(np.vstack([xi.flatten(), yi.flatten()]))
+            ax[3, col].pcolormesh(xi, yi, zi.reshape(xi.shape))
+        except:
+            pass
+
+        if axeslabels:
+            ax[0, col].set_xlabel("P/L")#, fontsize=fontsize)
+            ax[1, col].set_xlabel('time')#, fontsize=fontsize)
+            ax[1, col].set_ylabel('P/L')#, fontsize=fontsize)
+            ax[2, col].set_xlabel('trade duration [h]')#, fontsize=fontsize)
+            ax[2, col].set_xlabel('P/L')#, fontsize=fontsize)
+            ax[3, col].set_xlabel('trade open time [h]')#, fontsize=fontsize)
+            ax[3, col].set_ylabel('P/L')#, fontsize=fontsize)
+
+        
+    def plot(self, alltrades, longtrades, shorttrades):
+        fig, ax = plt.subplots(nrows=4, ncols=3, figsize=(40, 30))
+        plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        self.subplot(ax, alltrades, 0, 'All trades', axeslabels=True)
+        self.subplot(ax, longtrades, 1, 'Long trades')
+        self.subplot(ax, shorttrades, 2, 'Short trades')
+
         plt.show()
         if self.filename is not None:
             plt.savefig(self.filename + ".png")
@@ -177,11 +218,8 @@ class Analysis(object):
         strategies = list(set(alltrades["strategy"]))
 
         for strategy in strategies:
-#            for instr in tradedinstruments:
-            #logging.info("Strategy = %s, instrument = %s", strategy, instr)
-            logging.info("Strategy = %s", strategy)
 
-            #trades = alltrades[alltrades["instrument"] == instr]
+            logging.info("Strategy = %s", strategy)
             trades = alltrades[alltrades["strategy"] == strategy]
 
             #logging.info(trades["opentime"])
@@ -207,5 +245,5 @@ class Analysis(object):
                 logging.info("")
                 self.analyze(shorttrades)
 
-            self.plotprofit(trades, longtrades, shorttrades)
+            self.plot(trades, longtrades, shorttrades)
 

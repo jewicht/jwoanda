@@ -11,7 +11,7 @@ class RandomStrategy(Strategy):
         self.state = 0
         self.tradeId = -1
         
-    def onTick(self, ticks, cnt):
+    def onTick(self, tick):
         pass
 
     def onCandle(self):

@@ -13,6 +13,16 @@ class OandaEnvironment(object):
         self.environment = environment
         self.readconf()
         
+        self._apiurl = {'practice': "api-fxpractice.oanda.com",
+                        'live'    : "api-fxtrade.oanda.com"}
+        
+        self._streamingapiurl = {'practice': "stream-fxpractice.oanda.com",
+                                'live'    : "stream-fxtrade.oanda.com"}
+
+        self._api = v20.Context(self._apiurl[self.environment],
+                                token=self.apikey,
+                                datetime_format='UNIX')
+
 
     def readconf(self):
         configpath = BaseDirectory.save_config_path('jwoanda')
@@ -38,17 +48,11 @@ class OandaEnvironment(object):
 
 
     def api(self):
-        apiurl = {'practice': "api-fxpractice.oanda.com",
-                  'live'    : "api-fxtrade.oanda.com"}
-        return v20.Context(apiurl[self.environment],
-                           token=self.apikey,
-                           datetime_format='UNIX')
+        return self._api
 
 
     def streamingapi(self):
-        streamingapiurl = {'practice': "stream-fxpractice.oanda.com",
-                           'live'    : "stream-fxtrade.oanda.com"}
-        return v20.Context(streamingapiurl[self.environment],
+        return v20.Context(self._streamingapiurl[self.environment],
                            token=self.apikey,
                            datetime_format='UNIX')
 
@@ -63,24 +67,32 @@ class OandaEnvironment(object):
         return self._datadir
 
 
-    @property
-    def environment(self):
-        return self._environment
+    # @property
+    # def environment(self):
+    #     return self._environment
 
 
-    @environment.setter
-    def environment(self, value):
-        if value not in ['practice', 'live']:
-            raise ValueError("Wrong environment value")
-        self._environment = value
+    # @environment.setter
+    # def environment(self, value):
+    #     if value not in ['practice', 'live']:
+    #         raise ValueError("Wrong environment value")
+    #     self._environment = value
+    #     self._api = v20.Context(self._apiurl[self.environment],
+    #                             token=self.apikey,
+    #                             datetime_format='UNIX')
 
 
     def golive(self):
-        self.environment = 'live'
-
+        self._environment = 'live'
+        self._api = v20.Context(self._apiurl[self._environment],
+                                token=self.apikey,
+                                datetime_format='UNIX')
 
     def gopractice(self):
-        self.environment = 'practice'
+        self._environment = 'practice'
+        self._api = v20.Context(self._apiurl[self._environment],
+                                token=self.apikey,
+                                datetime_format='UNIX')
         
 
     @property

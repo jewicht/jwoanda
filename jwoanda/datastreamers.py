@@ -5,10 +5,13 @@ import threading
 import time
 import numpy as np
 
+import v20
+
 from jwoanda.instenum import Instruments
 from jwoanda.history import floattostr
 from jwoanda.oandaaccount import oandaenv
 from jwoanda.utils import get_items
+from jwoanda.enums import Events
 
 class HeartbeatCheck(threading.Thread):
     def __init__(self, obj, method, name, delay=5):
@@ -43,37 +46,46 @@ class TransactionsStreamer(threading.Thread):
         self.kill = False
         
     def run(self):
-        response = oandaenv.streamingapi().transaction.stream(oandaenv.account_id)
-    
-        for msg_type, msg in response.parts():
-            if self.kill:
-                return
-            if msg_type == "transaction.TransactionHeartbeat":
-                self.lastheartbeattime = time.time()
-            elif msg_type == 'transaction.Transaction':
-                if msg.type == 'MARKET_ORDER':
-                    # id, time, userID, accountID, batchID, instrument, units, timeInForce, positionFill, reason
-                    pass
-                elif msg.type == 'ORDER_FILL':
-                    # id, time, userID, accountID, batchID, orderID, instrument, units, price, 
-                    pass
-                elif msg.type == 'TAKE_PROFIT_ORDER':
-                    #print(msg.type)
-                    #print(msg)
-                    pass
-                elif msg.type == 'STOP_LOSS_ORDER':
-                    #print(msg.type)
-                    #print(msg)
-                    pass
-                elif msg.type == 'ORDER_CANCEL':
-                    #print(msg.type)
-                    #print(msg)
-                    pass
-                else:
-                    print(msg)
+        while not self.kill:
+            try:
+                response = oandaenv.streamingapi().transaction.stream(oandaenv.account_id)
+                for msg_type, msg in response.parts():
+                    if self.kill:
+                        return
+                    self.process(msg_type, msg)
+            except v20.errors.V20ConnectionError:
+                time.sleep(0.5)
+            except v20.errors.V20Timeout:
+                time.sleep(0.5)
+
+
+    def process(self, msg_type, msg):
+        if msg_type == "transaction.TransactionHeartbeat":
+            self.lastheartbeattime = time.time()
+        elif msg_type == 'transaction.Transaction':
+            if msg.type == 'MARKET_ORDER':
+                # id, time, userID, accountID, batchID, instrument, units, timeInForce, positionFill, reason
+                pass
+            elif msg.type == 'ORDER_FILL':
+                # id, time, userID, accountID, batchID, orderID, instrument, units, price, 
+                pass
+            elif msg.type == 'TAKE_PROFIT_ORDER':
+                #print(msg.type)
+                #print(msg)
+                pass
+            elif msg.type == 'STOP_LOSS_ORDER':
+                #print(msg.type)
+                #print(msg)
+                pass
+            elif msg.type == 'ORDER_CANCEL':
+                #print(msg.type)
+                #print(msg)
+                pass
             else:
-                logging.info('No action for this msg: %s', msg_type)
-           
+                print(msg)
+        else:
+            logging.info('No action for this msg: %s', msg_type)
+
     def disconnect(self):
         logging.debug("Disconnecting")
         self.kill = True
@@ -83,7 +95,7 @@ class TransactionsStreamer(threading.Thread):
 class RatesStreamer(threading.Thread):
     def __init__(self, tickQueues, instruments, portfolios, gtkinterface, **kwargs):
         super(RatesStreamer, self).__init__(**kwargs)
-        self.instruments = instruments
+        self.instruments = set(instruments)
 
         self.lastheartbeattime = None
         self.lastpricetime = None
@@ -92,75 +104,99 @@ class RatesStreamer(threading.Thread):
         self.portfolios = portfolios
         self.kill = False
         self.gtkinterface = gtkinterface
-        
+        self.restart = False
+
+
+    def addinstrument(self, instrument):
+        self.instruments.add(instrument)
+        self.restart = True
+
+
     def run(self):
         logging.info("Running: instruments = %s", ','.join(self.instruments))
+        while not self.kill:
+            self.realrun()
 
-        response = oandaenv.streamingapi().pricing.stream(
-            oandaenv.account_id,
-            instruments=','.join(self.instruments)
-        )
+
+    def realrun(self):
+        while not self.kill:
+            try:
+                response = oandaenv.streamingapi().pricing.stream(
+                    oandaenv.account_id,
+                    instruments=','.join(self.instruments)
+                )
     
-        for msg_type, msg in response.parts():
-            if self.kill:
-                return
-            if msg_type == "pricing.PricingHeartbeat":
-                self.lastheartbeattime = time.time()
-            elif msg_type == "pricing.Price":
+                for msg_type, msg in response.parts():
+                    if self.kill or self.restart:
+                        return
+                    self.process(msg_type, msg)
+            except v20.errors.V20ConnectionError:
+                time.sleep(0.5)
+            except v20.errors.V20Timeout:
+                time.sleep(0.5)
 
-                # type: PRICE
-                # instrument: EUR_GBP
-                # time: '1487973598.721325319'
-                # status: non-tradeable
-                # bids:
-                # - price: 0.84687
-                #   liquidity: 1000000.0
-                # - price: 0.84686
-                #   liquidity: 2000000.0
-                # - price: 0.84685
-                #   liquidity: 5000000.0
-                # - price: 0.84683
-                #   liquidity: 10000000.0
-                # asks:
-                # - price: 0.84795
-                #   liquidity: 1000000.0
-                # - price: 0.84796
-                #   liquidity: 2000000.0
-                # - price: 0.84797
-                #   liquidity: 5000000.0
-                # - price: 0.84799
-                #   liquidity: 10000000.0
-                # closeoutBid: 0.84683
-                # closeoutAsk: 0.84799
 
-                if msg.status == 'non-tradeable':
-                    logging.error("Market is closed")
-                    continue
+    def process(self, msg_type, msg):
+        if msg_type == "pricing.PricingHeartbeat":
+            self.lastheartbeattime = time.time()
+        elif msg_type == "pricing.Price":
 
-                self.lastpricetime = time.time()
-                instrument = Instruments[msg.instrument]
-                _time = np.float64(msg.time)
-                #bid = np.float64(msg.closeoutBid)
-                #ask = np.float64(msg.closeoutAsk)
-                bid = np.float64(msg.bids[0].price)
-                ask = np.float64(msg.asks[0].price)
-
-                tick = (instrument, _time, bid, ask)
-
-                #update price in portfolios
+            # type: PRICE
+            # instrument: EUR_GBP
+            # time: '1487973598.721325319'
+            # status: non-tradeable
+            # bids:
+            # - price: 0.84687
+            #   liquidity: 1000000.0
+            # - price: 0.84686
+            #   liquidity: 2000000.0
+            # - price: 0.84685
+            #   liquidity: 5000000.0
+            # - price: 0.84683
+            #   liquidity: 10000000.0
+            # asks:
+            # - price: 0.84795
+            #   liquidity: 1000000.0
+            # - price: 0.84796
+            #   liquidity: 2000000.0
+            # - price: 0.84797
+            #   liquidity: 5000000.0
+            # - price: 0.84799
+            #   liquidity: 10000000.0
+            # closeoutBid: 0.84683
+            # closeoutAsk: 0.84799
+            
+            instrument = Instruments[msg.instrument]
+                
+            if msg.status == 'non-tradeable':
+                logging.error("Market is closed")
                 for portfolio in self.portfolios:
-                    portfolio.setprice(instrument, (_time, bid, ask))
+                    portfolio.marketclosed(instrument, True)
 
-                if self.gtkinterface:
-                    self.gtkinterface.setprice(msg.instrument, bid, ask)
+            self.lastpricetime = time.time()
+            instrument = Instruments[msg.instrument]
+            _time = np.float64(msg.time)
+            #bid = np.float64(msg.closeoutBid)
+            #ask = np.float64(msg.closeoutAsk)
+            bid = np.float64(msg.bids[0].price)
+            ask = np.float64(msg.asks[0].price)
+
+            #update price in portfolios
+            for portfolio in self.portfolios:
+                portfolio.setprice(instrument, (_time, bid, ask, True))
+                
+            if self.gtkinterface:
+                self.gtkinterface.setprice(msg.instrument, bid, ask)
                     
-                #send the tick to the CandleMaker
-                for key, value in get_items(self.tickQueues):
-                    if instrument in key:
-                        value.put(tick)
-            else:
-                pass
+            #send the tick to the Candle
+            tick = (instrument, _time, bid, ask)
+            for eq in self.tickQueues:
+                for i, g in eq['iglist']:
+                    if i == instrument:
+                        eq['queue'].put({'type': Events.TICK, 'tick': tick})
 
+        else:
+            pass
 
     def disconnect(self):
         logging.debug("Disconnecting")

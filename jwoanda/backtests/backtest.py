@@ -12,7 +12,7 @@ except:
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 import numpy as np
-import pathlib
+import pathlib2
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
 from jwoanda.strategy import BaseStrategy
@@ -195,7 +195,7 @@ class BaseBacktest(object, with_metaclass(ABCMeta)):
         if self._saveindatadir:
             directory = os.path.join(oandaenv.datadir, directory)
 
-        pathlib.Path(directory).mkdir(parents=True, exist_ok=True) 
+        pathlib2.Path(directory).mkdir(parents=True, exist_ok=True) 
 
         if filename is None:
             instlist = '-'.join([instr.name for instr in self.strategy.instruments])
@@ -222,6 +222,9 @@ class Backtest(BaseBacktest):
 
         self.bthm = BTHistoryManager(strategy.iglist, start, end)
         self.strategy.hm = self.bthm
+
+        self.mintime = self.bthm.mintime()
+        self.maxtime = self.bthm.maxtime()
         
     def start(self):
         if self.showprogressbar:
@@ -229,11 +232,10 @@ class Backtest(BaseBacktest):
                                         Percentage(),
                                         Bar(),
                                         ETA()],
-                               min_value=self.bthm.mintime(),
-                               max_value=self.bthm.maxtime())
+                               max_value=self.maxtime - self.mintime)
         while self.bthm.iteratetime():
             if self.showprogressbar:
-                pbar.update(self.bthm.currtime())
+                pbar.update(self.bthm.currtime() - self.mintime)
 
             for i, g in self.strategy.iglist:
                 candle = self.bthm.getcandles(i, g, 1)

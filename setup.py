@@ -1,4 +1,5 @@
 import os
+import sys
 from setuptools import setup, find_packages
 
 # Utility function to read the README file.
@@ -21,28 +22,39 @@ for root, dirs, files in os.walk("jwoanda/"):
                name = pyx.replace('/', '.').replace('.pyx', '')
                modules.append(Extension(name=name, sources=[pyx]))
 
+install_requires=[
+    'numpy',
+    'matplotlib',
+    'pandas',
+    'pathlib2',
+    'progressbar2',
+    'scipy',
+    'six',
+    'TA-lib',
+    'v20',
+    'pyxdg',
+    'PyYAML'
+    ]
+
+if sys.version_info.major < 3:
+    install_requires.append('backports_abc')
+    install_requires.append('backports.lzma')
+               
 setup(
     name = "jwoanda",
-    version = "0.0.1",
+    version = "0.0.2",
     author = "Jean Wicht",
     author_email = "jean.wicht@gmail.com",
     description = ("Trading framework for OANDA v20 rest API"),
     license = "GPLv2",
     keywords = "oanda forex trading",
-    #url = "http://packages.python.org/an_example_pypi_project",
     packages=find_packages(),
     long_description=read('README.md'),
-    install_requires=[
-        'numpy',
-        'matplotlib',
-        'pandas',
-        'TA-lib',
-        'cython'
-    ],
+    install_requires=install_requires,
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Utilities"
     ],
-    cmdclass={'build_ext':build_ext},
+    cmdclass={'build_ext': build_ext},
     ext_modules = modules
 )

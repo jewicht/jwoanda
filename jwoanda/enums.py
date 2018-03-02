@@ -18,6 +18,7 @@ class ExitReason(Enum):
     SL = 'SL'
     TS = 'TS'
     END = 'END'
+    LIFETIME = 'Lifetime'
     NONE = 'NONE'
 
 @unique

@@ -1,23 +1,24 @@
 from __future__ import print_function
 
 try:
-    from queue import Queue as thQueue
+    from queue import Queue
 except:
-    from Queue import Queue as thQueue
+    from Queue import Queue
 import threading
-from multiprocessing import Queue as mpQueue, Pipe
 from time import sleep
 import logging
 import signal
 
 from jwoanda.oandaaccount import oandaenv
-from jwoanda.candlemaker import CandleMakerHelperThread, CandleMakerHelperProcess
 from jwoanda.datastreamers import RatesStreamer, FakeRatesStreamer, TransactionsStreamer, HeartbeatCheck
-from jwoanda.strategy import BaseStrategy
+from jwoanda.strategy import BaseStrategy, Strategy, TickStrategy
 from jwoanda.portfolio.portfolio import Portfolio
 from jwoanda.portfolio.oandaportfolio import OandaPortfolio, OandaPortfolioManager, OandaPortfolioProxy
 from jwoanda.enums import Events, ExitReason
-from jwoanda.gtkinterface import GTKInterface
+from jwoanda.strategytrading import StrategyTrading, TickStrategyTrading
+from jwoanda.candledownloader import CandleDownloader, Clock
+from jwoanda.history import RealHistoryManager
+from jwoanda.utils import get_items
 
 class TradingAppThread(threading.Thread):
     def __init__(self, strategies, environment='practice', **kwargs):
@@ -44,7 +45,6 @@ class TradingApp(object):
             signal.signal(signal.SIGTERM, self.signal_term_handler)
             signal.signal(signal.SIGINT, self.signal_term_handler)
 
-        self.usemp = bool(kwargs.get("usemp", False))
         self.usegtk = bool(kwargs.get("usegtk", False))
         self.usefakedata = bool(kwargs.get("usefakedata", False))
         self.closepositions = bool(kwargs.get("closepositions", True))
@@ -52,72 +52,91 @@ class TradingApp(object):
         if not isinstance(self.portfolio, Portfolio):
             raise ValueError("Not a portfolio?")
 
-        tradedinstruments = []
+        tradedinstruments = set()
         for strategy in self.strategies:
             if not isinstance(strategy, BaseStrategy):
                 raise ValueError("Not a strategy?")
-
             for instrument in strategy.instruments:
-                if instrument in tradedinstruments:
-                    continue
-                tradedinstruments.append(instrument.name)
+                tradedinstruments.add(instrument.name)
+
         logging.info("tradedinstruments = %s", " ".join(tradedinstruments))
 
 
-        tickQueues = {}
-        #tickQueues go from RateStreamer (1) to CandleMaker ( size(strategies) )
+        tickQueues = []
 
         self.threads = []
         self.processes = []
         pipelist = []
 
-        if self.usemp:
-            self.trigger = thQueue()
-
         if self.usegtk:
+            from jwoanda.gtkinterface import GTKInterface
             self.gtkinterface = GTKInterface(tradedinstruments, name="GTKInterface")
             self.threads.append(self.gtkinterface)
         else:
             self.gtkinterface = None
 
+        iglist = set()
+        glist = set()
+        for strategy in strategies:
+            for ig in strategy.iglist:
+                i, g = ig
+                iglist.add(ig)
+                glist.add(g)
+
+        clocks = []
+
+        candleCloseEvents = {}
+        candleReadyEvents = {}
+        for g in glist:
+            ev = threading.Event()
+            clock = Clock(g, ev)
+            self.threads.append(clock)
+
+            clocks.append( {'clock': clock,
+                            'g': g,
+                            'ev' : ev})
+            candleCloseEvents[g] = ev
+            candleReadyEvents[g] = threading.Event()
+            
+        self.hm = RealHistoryManager(iglist)
+
+        
         for strategy in self.strategies:
-            #instruments = '-'.join([instr.name for instr in strategy.instruments])
-            if self.usemp:
+            eQ = Queue()
+            tickQueues.append({'iglist': strategy.iglist,
+                               'queue': eQ})
+            
+            strategy.portfolio = self.portfolio
+            strategy.hm = self.hm
+            
+            tst = TickStrategyTrading(strategy, eQ)
+            self.threads.append(tst)
+            
+            if isinstance(strategy, Strategy):
+                st = StrategyTrading(strategy, candleReadyEvents[strategy.granularity])
+                self.threads.append(st)
+                
+        
+        for g in glist:
+            ilist = set()
+            for strategy in self.strategies:
+                for i, gg in strategy.iglist:
+                    if g == gg:
+                        ilist.add(i)
 
-                tQ = mpQueue()
-                tickQueues[tuple(strategy.instruments)] = tQ
+            evc = candleCloseEvents[g]
+            evr = candleReadyEvents[g]
+            cdth = CandleDownloader(ilist, g, self.hm, self.portfolio, evc, evr)
+            self.threads.append(cdth)
+            
 
-                #replace portfolio:
-                pipea, pipeb = Pipe()
-                pipelist.append(pipea)
-                newport = OandaPortfolioProxy(self.trigger, pipeb)
-                strategy.portfolio = newport
-
-                cmhp = CandleMakerHelperProcess(tQ,
-                                                strategy,
-                                                name='_'.join(["CandleMakerHelper", strategy.name]))
-                self.processes.append(cmhp)
-            else:
-                tQ = thQueue()
-                tickQueues[tuple(strategy.instruments)] = tQ
-
-                strategy.portfolio = self.portfolio
-                strategy.hm = self.hm
-                cmht = CandleMakerHelperThread(tQ,
-                                               strategy,
-                                               name='_'.join(["CandleMakerHelper", strategy.name]))
-                self.threads.append(cmht)
-
-
-
-        if self.usemp:
-            opmt = OandaPortfolioManager(self.portfolio, self.trigger, pipelist)
-            self.threads.append(opmt)
 
         est = TransactionsStreamer(self.portfolio, name="TransactionsStreamer")
         self.threads.append(est)
 
-        eshb = HeartbeatCheck(est, 'lastheartbeattime', name='HeartbeatCheck-TransactionsStreamer', delay=5)
+        eshb = HeartbeatCheck(est, 'lastheartbeattime',
+                              name='HeartbeatCheck-TransactionsStreamer',
+                              delay=5)
         self.threads.append(eshb)
 
         if self.usefakedata:
@@ -138,6 +157,9 @@ class TradingApp(object):
         self.threads.append(rshb1)
         rshb2 = HeartbeatCheck(rst, 'lastpricetime', name='PriceCheck-RateStreamer', delay=60)
         self.threads.append(rshb2)
+        self.tickQueues = tickQueues
+        self.candleCloseEvents = candleCloseEvents
+        self.candleReadyEvents = candleReadyEvents
 
 
     def run(self):
@@ -177,7 +199,7 @@ class TradingApp(object):
 
         for p in self.processes:
             p.disconnect()
-
+        
         sleep(1)
 
         if len(self.processes) > 0:
@@ -185,9 +207,6 @@ class TradingApp(object):
             for p in self.processes:
                 logging.info("Process %s : alive = %d", p.name, p.is_alive())
                 p.terminate()
-
-        if self.usemp:
-            self.trigger.put(Events.KILL)
 
         logging.info("Closing all position")
 
