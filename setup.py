@@ -28,6 +28,7 @@ for root, dirs, files in os.walk("jwoanda"):
 #install_requires = [str(ir.req) for ir in pipreqs]
 
 install_requires = [
+    'cython',
     'numpy',
     'matplotlib',
     'pandas',
