@@ -79,8 +79,10 @@ class OandaPortfolioProxy(Portfolio):
 
 
 class OandaPortfolio(Portfolio):
-    def __init__(self):
+    def __init__(self, docheckTPSL):
         super(OandaPortfolio, self).__init__()
+
+        self.docheckTPSL = docheckTPSL
 
         uselocking = False
         self._lock = threading.Lock() if uselocking else None
@@ -186,21 +188,23 @@ class OandaPortfolio(Portfolio):
             logging.warning("A position is already opened")
 
         _time, bid, ask = self.price(instrument)
+        spread = ask - bid
+        price = ask if units > 0. else bid
 
         stoploss = kwargs.get("stoploss", -1.)
         takeprofit = kwargs.get("takeprofit", -1.)
         trailingstop = kwargs.get("trailingstop", -1.)
-        spread = ask - bid
-
-        price = ask if units > 0. else bid
+        lifetime = kwargs.get("lifetime", -1.)
 
         arguments = {}
-        if stoploss > 0.:
-            arguments['stopLossOnFill'] = v20.transaction.StopLossDetails(price=stoploss)
-        if takeprofit > 0.:
-            arguments['takeProfitOnFill'] = v20.transaction.TakeProfitDetails(price=takeprofit)
-        if trailingstop > 0.:
-            arguments['trailingStopLossOnFill'] = v20.transaction.TrailingStopLossDetails(distance=trailingstop)
+        if not self.docheckTPSL:
+
+            if stoploss > 0.:
+                arguments['stopLossOnFill'] = v20.transaction.StopLossDetails(price=stoploss)
+            if takeprofit > 0.:
+                arguments['takeProfitOnFill'] = v20.transaction.TakeProfitDetails(price=takeprofit)
+            if trailingstop > 0.:
+                arguments['trailingStopLossOnFill'] = v20.transaction.TrailingStopLossDetails(distance=trailingstop)
 
         response = self.apiordermarket(instrument, units, **arguments)
 
@@ -309,7 +313,8 @@ class OandaPortfolio(Portfolio):
                                     opentime=_time,
                                     stoploss=stoploss,
                                     takeprofit=takeprofit,
-                                    trailingstop=trailingstop)
+                                    trailingstop=trailingstop,
+                                    litetime=lifetime)
 
             self.unlock()
             return tradeID

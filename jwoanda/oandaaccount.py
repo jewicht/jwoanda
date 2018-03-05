@@ -41,7 +41,7 @@ class OandaEnvironment(object):
             raise Exception("Couldn't open/read account config file: %s" % filename)
 
 
-    def info():
+    def info(self):
         logging.info("environment = %s", self.environment)
         logging.info("account_id  = %s", self.account_id)
         logging.info("apikey      = %s", self.apikey)

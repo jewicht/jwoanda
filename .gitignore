@@ -13,5 +13,7 @@ tests/
 history/
 models/
 portfolios/
+build/
+dist/
 logs
 __pycache__

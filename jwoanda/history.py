@@ -23,13 +23,9 @@ class BaseHistoryManager(object, with_metaclass(ABCMeta)):
         self._indicies = {}
         self._candles = {}
 
-
+    @abstractmethod
     def getcandles(self, i, g, count):
-        idx = self._indicies[(i,g)]
-        if count>=idx:
-            return None
-        return self._candles[(i, g)]._data[idx-count:idx]
-
+        pass
 
     @abstractmethod
     def currtime(self):
@@ -41,10 +37,15 @@ class RealHistoryManager(BaseHistoryManager):
         super(RealHistoryManager, self).__init__()
         self._ready = {}
         for i, g in iglist:
-            self._candles[(i,g)] = Candles(i, g)
-            self._indicies[(i,g)] = 0
-            self._ready[(i,g)] = False
+            self._candles[(i, g)] = Candles(i, g)
+            self._indicies[(i, g)] = 0
+            self._ready[(i, g)] = False
 
+    def getcandles(self, i, g, count):
+        idx = self._indicies[(i,g)]
+        if count>=idx:
+            return None
+        return self._candles[(i, g)]._data[idx-count:idx]
 
     def isready(self, i, g):
         return self._ready[(i,g)]
@@ -55,8 +56,8 @@ class RealHistoryManager(BaseHistoryManager):
 
 
     def addCandle(self, i, g, candle):
-        self._candles[(i,g)].add(candle)
-        self._indicies[(i,g)] += 1
+        self._candles[(i, g)].add(candle)
+        self._indicies[(i, g)] += 1
 
 
     def currtime(self):
@@ -66,13 +67,23 @@ class RealHistoryManager(BaseHistoryManager):
 
 class BTHistoryManager(BaseHistoryManager):
 
-    def __init__(self, iglist, start, end):
+    def __init__(self, instruments, granularity, start, end):
         super(BTHistoryManager, self).__init__()
-        self._first = iglist[0]
+        self._granularity = granularity
+        self._instruments = instruments
+        self._first = instruments[0]
 
-        for i, g in iglist:
-            self._candles[(i,g)] = getcandles(i, g, start, end)
-            self._indicies[(i,g)] = 0
+        for i in instruments:
+            self._candles[i] = getcandles(i, granularity, start, end)
+            self._indicies[i] = 0
+
+
+    def getcandles(self, i, g, count):
+        idx = self._indicies[i]
+        if count>=idx:
+            return None
+        return self._candles[i]._data[idx-count:idx]
+
 
     def currtime(self):
         return self._candles[self._first].data[self._indicies[self._first]]['time']

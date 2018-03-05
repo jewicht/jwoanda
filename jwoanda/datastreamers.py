@@ -20,7 +20,7 @@ class HeartbeatCheck(threading.Thread):
         self.obj = obj
         self.method = method
         self.delay = delay
-        
+
     def run(self):
         while self.kill != True:
             time.sleep(1)
@@ -37,14 +37,13 @@ class HeartbeatCheck(threading.Thread):
 
         
 class TransactionsStreamer(threading.Thread):
-    def __init__(self, portfolio, **kwargs):
-        super(TransactionsStreamer, self).__init__(**kwargs)
+    def __init__(self, portfolio):
+        super(TransactionsStreamer, self).__init__(name="TransactionsStreamer")
         self.portfolio = portfolio
-
         self.lastheartbeattime = None
-
         self.kill = False
-        
+
+
     def run(self):
         while not self.kill:
             try:
@@ -64,25 +63,47 @@ class TransactionsStreamer(threading.Thread):
             self.lastheartbeattime = time.time()
         elif msg_type == 'transaction.Transaction':
             if msg.type == 'MARKET_ORDER':
-                # id, time, userID, accountID, batchID, instrument, units, timeInForce, positionFill, reason
+                # {"accountID":"101-002-1179508-001",
+                #  "batchID":"777",
+                #  "id":"777",
+                #  "instrument":"EUR_USD",
+                #  "positionFill":"DEFAULT","
+                #  reason":"CLIENT_ORDER",
+                #  "time":"2016-09-20T18:18:22.126490230Z",
+                #  "timeInForce":"FOK",
+                #  "type":"MARKET_ORDER",
+                #  "units":"100",
+                #  "userID":1179508}
                 pass
             elif msg.type == 'ORDER_FILL':
-                # id, time, userID, accountID, batchID, orderID, instrument, units, price, 
+                # {"accountBalance":"6505973.49885",
+                #  "accountID":"<ACCOUNT>",
+                #  "batchID":"777",
+                #  "financing":"0.00000",
+                #  "id":"778",
+                #  "instrument":"EUR_USD",
+                #  "orderID":"777",
+                #  "pl":"0.00000",
+                #  "price":"1.11625",
+                #  "reason":"MARKET_ORDER",
+                #  "time":"2016-09-20T18:18:22.126490230Z",
+                #  "tradeOpened":{"tradeID":"778","units":"100"},
+                #  "type":"ORDER_FILL",
+                #  "units":"100",
+                #  "userID":1179508}
                 pass
             elif msg.type == 'TAKE_PROFIT_ORDER':
-                #print(msg.type)
-                #print(msg)
-                pass
+                logging.info(msg.type)
+                logging.info(msg)
             elif msg.type == 'STOP_LOSS_ORDER':
-                #print(msg.type)
-                #print(msg)
-                pass
+                logging.info(msg.type)
+                logging.info(msg)
             elif msg.type == 'ORDER_CANCEL':
-                #print(msg.type)
-                #print(msg)
-                pass
+                logging.info(msg.type)
+                logging.info(msg)
             else:
-                print(msg)
+                logging.info(msg.type)
+                logging.info(msg)
         else:
             logging.info('No action for this msg: %s', msg_type)
 
@@ -93,18 +114,19 @@ class TransactionsStreamer(threading.Thread):
 
     
 class RatesStreamer(threading.Thread):
-    def __init__(self, tickQueues, instruments, portfolios, gtkinterface, **kwargs):
-        super(RatesStreamer, self).__init__(**kwargs)
+    def __init__(self, tickQueues, instruments, portfolio, gtkinterface, **kwargs):
+        super(RatesStreamer, self).__init__(name="RatesStreamer")
         self.instruments = set(instruments)
 
         self.lastheartbeattime = None
         self.lastpricetime = None
         
         self.tickQueues = tickQueues
-        self.portfolios = portfolios
+        self.portfolio = portfolio
         self.kill = False
         self.gtkinterface = gtkinterface
         self.restart = False
+        self.docheckTPSL = kwargs.get("docheckTPSL", False)
 
 
     def addinstrument(self, instrument):
@@ -167,36 +189,32 @@ class RatesStreamer(threading.Thread):
             # closeoutAsk: 0.84799
             
             instrument = Instruments[msg.instrument]
-                
-            if msg.status == 'non-tradeable':
-                logging.error("Market is closed")
-                for portfolio in self.portfolios:
-                    portfolio.marketclosed(instrument, True)
-
-            self.lastpricetime = time.time()
-            instrument = Instruments[msg.instrument]
             _time = np.float64(msg.time)
             #bid = np.float64(msg.closeoutBid)
             #ask = np.float64(msg.closeoutAsk)
             bid = np.float64(msg.bids[0].price)
             ask = np.float64(msg.asks[0].price)
+            self.lastpricetime = time.time()
 
-            #update price in portfolios
-            for portfolio in self.portfolios:
-                portfolio.setprice(instrument, (_time, bid, ask, True))
-                
+            #update price in portfolio
+            marketopen = not (msg.status == 'non-tradeable')
+            self.portfolio.setprice(instrument, (_time, bid, ask, marketopen))    
+            
             if self.gtkinterface:
                 self.gtkinterface.setprice(msg.instrument, bid, ask)
                     
             #send the tick to the Candle
             tick = (instrument, _time, bid, ask)
-            for eq in self.tickQueues:
-                for i, g in eq['iglist']:
-                    if i == instrument:
-                        eq['queue'].put({'type': Events.TICK, 'tick': tick})
 
+            if self.docheckTPSL:
+                self.portfolio.checkTPSL(tick)
+
+            for eq in self.tickQueues:
+                if instrument in eq['instruments']:
+                    eq['queue'].put({'type': Events.TICK, 'tick': tick})
         else:
             pass
+
 
     def disconnect(self):
         logging.debug("Disconnecting")
@@ -205,15 +223,15 @@ class RatesStreamer(threading.Thread):
 
 
 class FakeRatesStreamer(threading.Thread):
-    def __init__(self, tickQueues, instruments, portfolios, **kwargs):
-        super(FakeRatesStreamer, self).__init__(**kwargs)
+    def __init__(self, tickQueues, instruments, portfolio, **kwargs):
+        super(FakeRatesStreamer, self).__init__(name=FakeRatesStreamer)
         self.instruments = [Instruments[instrument] for instrument in instruments]
 
         self.lastheartbeattime = None
         self.lastpricetime = None
         
         self.tickQueues = tickQueues
-        self.portfolios = portfolios
+        self.portfolio = portfolio
 
         self.kill = False
 
@@ -238,14 +256,13 @@ class FakeRatesStreamer(threading.Thread):
                 ask = self.prices[instrument] + instrument.pip
 
                 #update price in portfolios
-                for portfolio in self.portfolios:
-                    portfolio.setprice(instrument, (_time, bid, ask))
+                self.portfolio.setprice(instrument, (_time, bid, ask, True))
 
                 tick = (instrument, _time, bid, ask)
                 #send the tick to the CandleMaker
-                for key, value in get_items(self.tickQueues):
-                    if instrument in key:
-                        value.put(tick)
+                for tq in self.tickQueues:
+                    if instrument in tq['instruments']:
+                        tq['queue'].put(tick)
             time.sleep(0.25)
 
 

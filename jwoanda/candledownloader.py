@@ -80,8 +80,6 @@ class CandleDownloader(threading.Thread):
             ssm = round(seconds_since_midnight())
             now = datetime.now()
             ts = int(now.strftime('%s'))
-            logging.debug(now)
-            logging.debug(ts)
 
             for instrument in self.ilist:
                 if not self.portfolio.istradeable(instrument):
@@ -95,7 +93,6 @@ class CandleDownloader(threading.Thread):
                         if int(float(candle.time)) == ts - self.granularity.value:
                             logging.debug("We have the candle we are looking for")
                             if candle.complete == True:
-                                logging.debug(candle)
                                 logging.debug("It is complete")
                                 success = True
                                 self.hm.addCandle(instrument, self.granularity, candle)
@@ -103,7 +100,7 @@ class CandleDownloader(threading.Thread):
                                 logging.debug("It is not complete")
                     if not success:
                         logging.debug("retry")
-                        self.stop.wait(0.1 + 0.5*random.random())
+                        self.stop.wait(1. + random.random())
             self.evr.set()
             self.evr.clear()
                     

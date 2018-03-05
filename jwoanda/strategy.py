@@ -33,11 +33,6 @@ class BaseStrategy(with_metaclass(ABCMeta)):
         self.options['lifetime'] = kwargs.get("lifetime", 0.)
         
         self.options.update(kwargs)
-        
-        self._mincandles = kwargs.get("mincandles", 1)
-        self._minticks = kwargs.get("minticks", 1)
-        self._reqcandles = kwargs.get("reqcandles", 500)
-        self._reqticks = kwargs.get("reqticks", 1000)
 
         self._hm = None
 
@@ -269,74 +264,50 @@ class BaseStrategy(with_metaclass(ABCMeta)):
 
 class Strategy(with_metaclass(ABCMeta, BaseStrategy)):
     """class to run single currency strategy"""
-    def __init__(self, name, iglist, **kwargs):
+    def __init__(self, name, instruments, granularity, **kwargs):
         super(Strategy, self).__init__(name, **kwargs)
-        
-        if isinstance(iglist, tuple):
-            iglist = [iglist]
-        
-        for instrument, granularity in iglist:
+
+        if isinstance(instruments, Instruments):
+            instruments = [instruments]
+
+        for instrument in instruments:
             if not isinstance(instrument, Instruments):
                 raise Exception("instrument needs to be an Instruments and not {}".format(type(instrument)))
-            if isinstance(granularity, Granularity):
-                pass
-            else:
-                raise Exception("Did not understood granularity. Type={}".format(type(granularity)))
 
-        self._iglist = iglist
+        if not isinstance(granularity, Granularity):
+            raise Exception("Did not understood granularity. Type={}".format(type(granularity)))
 
-        self._ilist = set()
-        self._glist = set()
-        for i, g in self._iglist:
-            self._ilist.add(i)
-            self._glist.add(g)
 
-        #self._ilist = sorted(self._ilist)
-        self._glist = sorted(self._glist)
+        self._instruments = instruments
+        self._granularity = granularity
             
-        self._units = kwargs.get('units', instrument.minimumTradeSize)
+        self._units = kwargs.get('units', self.instrument.minimumTradeSize)
 
-        s = ""
-        for i, g in iglist:
-            s += "{} @ {}".format(i.name, g.name)
-            
+        s = ", ".join([i.name for i in instruments])
+        s += "@ {}".format(granularity.name)            
         logging.info("init {} on {}".format(self.name, s))
         
 
     @property
     def fullname(self):
         s = self.name
-        for i, g in self.iglist:
-            s = '-'.join([s, i.name, g.name])
+        s +=  ",".join(self.instruments)
+        s += "@{}".format(self.granularity)
         return s
 
-    @property
-    def iglist(self):
-        return self._iglist
 
     @property
     def instrument(self):
-        i, g = self._iglist[0]
-        return i
+        return self._instruments[0]
 
     @property
     def instruments(self):
-        return self._ilist
+        return self._instruments
 
     @property
     def granularity(self):
-        i, g = self._iglist[0]
-        return g
+        return self._granularity
 
-    @property
-    def granularities(self):
-        return self._glist
-
-    @property
-    def smallestgranularity(self):
-        return self.granularities[0]
-            
-    
     @property
     def units(self):
         return self._units

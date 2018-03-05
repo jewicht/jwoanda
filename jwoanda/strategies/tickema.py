@@ -19,8 +19,9 @@ class TickEmaStrategy(TickStrategy):
 
         self.reqticks = 5
 
+
     def onTick(self, tick):
-        time, bid, ask = tick
+        instrument, time, bid, ask = tick
 
         emasvp = self.emas.prev
         emalvp = self.emal.prev

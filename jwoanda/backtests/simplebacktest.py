@@ -4,6 +4,7 @@ import numpy as np
 
 from jwoanda.backtests.backtest import Backtest
 from jwoanda.strategy import Strategy
+from jwoanda.history import getcandles
 
 class SimpleBacktest(Backtest):
     def __init__(self, strategy, start, end, **kwargs):
@@ -12,7 +13,7 @@ class SimpleBacktest(Backtest):
         if not isinstance(self.strategy, Strategy):
             raise Exception("Not a single-candle strategy")
 
-        self.candles = HistoryManager.getcandles(strategy.instrument, strategy.granularity, start, end)
+        self.candles = getcandles(strategy.instrument, strategy.granularity, start, end)
 
         self.longcut = kwargs.get("longcut", 0.)
         self.shortcut = kwargs.get("shortcut", 0.)
@@ -42,8 +43,10 @@ class SimpleBacktest(Backtest):
         meanspread = spread.mean()
         
         self.strategy.modeBT = True
-        self.strategy.calcIndicators(candles)
-        self.strategy.calcMVA()
+        if hasattr(self.strategy, 'calcIndicators'):
+            self.strategy.calcIndicators(candles)
+        if hasattr(self.strategy, 'calcMVA'):
+            self.strategy.calcMVA()
 
 
         if not hasattr(self.strategy, 'indicators'):

@@ -19,10 +19,10 @@ logging.basicConfig(filename='logs/trading_random-{}.log'.format(datetime.utcnow
 
 strategies = []
 
-strategy = RandomStrategy((Instruments.GBP_USD, Granularity.S30), units=1, prob=1., stoploss=100, takeprofit=100)
+strategy = RandomStrategy(Instruments.GBP_USD, Granularity.S30, units=1, prob=1., stoploss=100, takeprofit=100)
 strategies.append(strategy)
 
-strategy = RandomStrategy((Instruments.EUR_USD, Granularity.M1), units=1, prob=1., stoploss=100, takeprofit=100)
+strategy = RandomStrategy(Instruments.EUR_USD, Granularity.M1, units=1, prob=1., stoploss=100, takeprofit=100)
 strategies.append(strategy)
 
 

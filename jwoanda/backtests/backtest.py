@@ -118,7 +118,7 @@ class BaseBacktest(object, with_metaclass(ABCMeta)):
 
     def tickoperation(self, tick, cmt=None):
         instrument, time, bid, ask = tick
-        self.portfolio.setprice(instrument, (time, bid, ask))
+        self.portfolio.setprice(instrument, (time, bid, ask, True))
         self.portfolio.checkTPSL(tick)
         if cmt is not None:
             cmt.addTick(tick)
@@ -220,11 +220,12 @@ class Backtest(BaseBacktest):
     def __init__(self, strategy, start, end, **kwargs):
         super(Backtest, self).__init__(strategy, start, end, **kwargs)
 
-        self.bthm = BTHistoryManager(strategy.iglist, start, end)
+        self.bthm = BTHistoryManager(strategy.instruments, strategy.granularity, start, end)
         self.strategy.hm = self.bthm
 
         self.mintime = self.bthm.mintime()
         self.maxtime = self.bthm.maxtime()
+
         
     def start(self):
         if self.showprogressbar:
@@ -237,12 +238,12 @@ class Backtest(BaseBacktest):
             if self.showprogressbar:
                 pbar.update(self.bthm.currtime() - self.mintime)
 
-            for i, g in self.strategy.iglist:
-                candle = self.bthm.getcandles(i, g, 1)
+            for i in self.strategy.instruments:
+                candle = self.bthm.getcandles(i, self.granularity, 1)
                 if candle is not None:
                     candle = candle[0]
                     self.randomtickgenerator(candle, i)
-                    self.portfolio.setprice(i, (candle['time'], candle['closeBid'], candle['closeAsk']))
+                    self.portfolio.setprice(i, (candle['time'], candle['closeBid'], candle['closeAsk'], True))
             self.strategy.onCandle()
 
         if self.showprogressbar:

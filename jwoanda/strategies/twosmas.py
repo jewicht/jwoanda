@@ -6,8 +6,8 @@ import talib as ta
 import numpy as np
 
 class TwoSMAsStrategy(Strategy):
-    def __init__(self, iglist, **kwargs):
-        super(TwoSMAsStrategy, self).__init__("TwoSMAsStrategy", iglist, **kwargs)
+    def __init__(self, instruments, granularity, **kwargs):
+        super(TwoSMAsStrategy, self).__init__("TwoSMAsStrategy", instruments, granularity, **kwargs)
         ##self.invested = 0
         self.tradeId = -1
         self.smas = 0

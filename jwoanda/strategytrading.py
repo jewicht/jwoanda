@@ -19,6 +19,16 @@ class StrategyTrading(threading.Thread):
             self.evr.wait()
             if self.kill:
                 return
+
+            marketopen = True
+            for i in self.strategy.instruments:
+                if not self.strategy.portfolio.istradeable(i):
+                    marketopen = False
+                    break
+
+            if not marketopen:
+                continue
+            
             try:
                 self.strategy.onCandle()
             except:
@@ -44,8 +54,12 @@ class TickStrategyTrading(threading.Thread):
         while not self.kill:
             e = self.tickQueue.get()
             if e['type'] == Events.TICK:
+                tick = e['tick']
+                if not self.strategy.portfolio.istradeable(tick[0]):
+                    continue
+                
                 try:
-                    self.strategy.onTick(e['tick'])
+                    self.strategy.onTick(tick)
                 except:
                     logging.exception("your strategy crashed in onTick")
             elif e['type'] == Events.KILL:

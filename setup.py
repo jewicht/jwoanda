@@ -41,7 +41,7 @@ install_requires = [
     'pyxdg',
     'PyYAML',
 ]
-               
+
 setup(
     name = "jwoanda",
     version = "0.0.2",

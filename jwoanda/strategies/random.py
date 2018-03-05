@@ -5,8 +5,8 @@ from jwoanda.strategy import Strategy
 from jwoanda.enums import ExitReason
 
 class RandomStrategy(Strategy):
-    def __init__(self, iglist, **kwargs):
-        super(RandomStrategy, self).__init__("RandomStrategy", iglist, **kwargs)
+    def __init__(self, instruments, granularity, **kwargs):
+        super(RandomStrategy, self).__init__("RandomStrategy", instruments, granularity, **kwargs)
         self.prob = kwargs.get("prob", 0.5)
         self.state = 0
         self.tradeId = -1

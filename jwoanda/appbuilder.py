@@ -37,9 +37,6 @@ class TradingApp(object):
 
     def __init__(self, strategies, environment='practice', **kwargs):
 
-        self.strategies = strategies
-        self.portfolio = OandaPortfolio()
-        
         self.doterminate = False
         if not kwargs.get("nosignal", False):
             signal.signal(signal.SIGTERM, self.signal_term_handler)
@@ -48,6 +45,11 @@ class TradingApp(object):
         self.usegtk = bool(kwargs.get("usegtk", False))
         self.usefakedata = bool(kwargs.get("usefakedata", False))
         self.closepositions = bool(kwargs.get("closepositions", True))
+        self.docheckTPSL = bool(kwargs.get("docheckTPSL", True))
+
+
+        self.strategies = strategies
+        self.portfolio = OandaPortfolio(docheckTPSL=self.docheckTPSL)
 
         if not isinstance(self.portfolio, Portfolio):
             raise ValueError("Not a portfolio?")
@@ -78,10 +80,10 @@ class TradingApp(object):
         iglist = set()
         glist = set()
         for strategy in strategies:
-            for ig in strategy.iglist:
-                i, g = ig
-                iglist.add(ig)
-                glist.add(g)
+            glist.add(strategy.granularity)
+            for i in strategy.instruments:
+                iglist.add((i, strategy.granularity))
+
 
         clocks = []
 
@@ -103,7 +105,7 @@ class TradingApp(object):
         
         for strategy in self.strategies:
             eQ = Queue()
-            tickQueues.append({'iglist': strategy.iglist,
+            tickQueues.append({'instruments': strategy.instruments,
                                'queue': eQ})
             
             strategy.portfolio = self.portfolio
@@ -115,23 +117,22 @@ class TradingApp(object):
             if isinstance(strategy, Strategy):
                 st = StrategyTrading(strategy, candleReadyEvents[strategy.granularity])
                 self.threads.append(st)
-                
+
         
         for g in glist:
             ilist = set()
             for strategy in self.strategies:
-                for i, gg in strategy.iglist:
-                    if g == gg:
+                if strategy.granularity == g:
+                    for i in strategy.instruments:
                         ilist.add(i)
 
             evc = candleCloseEvents[g]
             evr = candleReadyEvents[g]
             cdth = CandleDownloader(ilist, g, self.hm, self.portfolio, evc, evr)
             self.threads.append(cdth)
-            
 
 
-        est = TransactionsStreamer(self.portfolio, name="TransactionsStreamer")
+        est = TransactionsStreamer(self.portfolio)
         self.threads.append(est)
 
         eshb = HeartbeatCheck(est, 'lastheartbeattime',
@@ -142,15 +143,14 @@ class TradingApp(object):
         if self.usefakedata:
             rst = FakeRatesStreamer(tickQueues,
                                     tradedinstruments,
-                                    [self.portfolio],
-                                    name="RateStreamer")
+                                    self.portfolio)
             self.threads.append(rst)
         else:
             rst = RatesStreamer(tickQueues,
                                 tradedinstruments,
-                                [self.portfolio],
+                                self.portfolio,
                                 self.gtkinterface,
-                                name="RateStreamer")
+                                docheckTPSL=self.docheckTPSL)
             self.threads.append(rst)
 
         rshb1 = HeartbeatCheck(rst, 'lastheartbeattime', name='HeartbeatCheck-RateStreamer', delay=5)

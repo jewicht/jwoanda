@@ -5,9 +5,10 @@ from jwoanda.strategy import Strategy
 from jwoanda.history import floattostr
 
 class NullStrategy(Strategy):
-    def __init__(self, iglist, **kwargs):
+    def __init__(self, instruments, granularity, **kwargs):
         super(NullStrategy, self).__init__("NullStrategy",
-                                           iglist,
+                                           instruments,
+                                           granularity,
                                            **kwargs)
 
     def onTick(self, tick):
@@ -20,8 +21,8 @@ class NullStrategy(Strategy):
 
 
     def onCandle(self):
-        for instrument, granularity in self.iglist:
-            candles = self.getcandles(instrument, granularity, 1)
+        for instrument in self.instruments:
+            candles = self.getcandles(instrument, self.granularity, 1)
             if candles is None:
                 return
             lastcandle = candles[0]
