@@ -7,7 +7,7 @@ from six import with_metaclass
 from progressbar import Bar, ETA, Percentage, ProgressBar
 import v20
 
-from jwoanda.resizebyvolume import resizebyvolume_cython
+from jwoanda.candleresize import resizebyvolume_cython
 from jwoanda.candles import Candles
 from jwoanda.enums import Granularity, VolumeGranularity
 from jwoanda.instenum import Instruments
@@ -39,20 +39,19 @@ class RealHistoryManager(BaseHistoryManager):
         for i, g in iglist:
             self._candles[(i, g)] = Candles(i, g)
             self._indicies[(i, g)] = 0
-            self._ready[(i, g)] = False
+
+
+    def add(self, i, g):
+        if self._candles.get((i, g)) is None:
+            self._candles[(i, g)] = Candles(i, g)
+            self._indicies[(i, g)] = 0
+
 
     def getcandles(self, i, g, count):
         idx = self._indicies[(i,g)]
         if count>=idx:
             return None
         return self._candles[(i, g)]._data[idx-count:idx]
-
-    def isready(self, i, g):
-        return self._ready[(i,g)]
-
-
-    def setready(self, i, g, b):
-        self._ready[(i,g)] = b
 
 
     def addCandle(self, i, g, candle):

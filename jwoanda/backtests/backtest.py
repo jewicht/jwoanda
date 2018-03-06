@@ -44,9 +44,6 @@ class BaseBacktest(object, with_metaclass(ABCMeta)):
         self._includedate = kwargs.get("includedate", False)
         self._saveindatadir = kwargs.get("saveindatadir", False)
 
-    @property
-    def granularity(self):
-        return self.strategy.granularity
 
     @property
     def showprogressbar(self):
@@ -120,6 +117,7 @@ class BaseBacktest(object, with_metaclass(ABCMeta)):
         instrument, time, bid, ask = tick
         self.portfolio.setprice(instrument, (time, bid, ask, True))
         self.portfolio.checkTPSL(tick)
+        self.strategy.onTick(tick)
         if cmt is not None:
             cmt.addTick(tick)
 
@@ -199,7 +197,11 @@ class BaseBacktest(object, with_metaclass(ABCMeta)):
 
         if filename is None:
             instlist = '-'.join([instr.name for instr in self.strategy.instruments])
-            filename = '-'.join([type(self).__name__, self.strategy.name, instlist, self.granularity.name, self._startdate, self._enddate])
+            filename = '-'.join([type(self).__name__, self.strategy.name, instlist])
+            
+            if hasattr(self, 'granularity'):
+                filename = "-".join([filename, getattr(self, 'granularity').name])
+            filename = "-".join([filename, self._startdate, self._enddate])
             if self._includedate:
                 mydate = self.portfolio._startdate.strftime("%Y%m%d%H%M")
                 filename += mydate
@@ -226,7 +228,12 @@ class Backtest(BaseBacktest):
         self.mintime = self.bthm.mintime()
         self.maxtime = self.bthm.maxtime()
 
-        
+
+    @property
+    def granularity(self):
+        return self.strategy.granularity
+
+
     def start(self):
         if self.showprogressbar:
             pbar = ProgressBar(widgets=['Backtesting: ',

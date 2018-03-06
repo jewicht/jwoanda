@@ -313,7 +313,7 @@ class Strategy(with_metaclass(ABCMeta, BaseStrategy)):
         return self._units
 
     @abstractmethod
-    def onTick(self):
+    def onTick(self, tick):
         pass
 
     @abstractmethod
@@ -332,10 +332,6 @@ class TickStrategy(with_metaclass(ABCMeta, BaseStrategy)):
         self._units = kwargs.get('units', instrument.minimumTradeSize)
 
         super(TickStrategy, self).__init__(name, **kwargs)
-
-    @property
-    def granularity(self):
-        return Granularity.NONE
         
     @property
     def fullname(self):

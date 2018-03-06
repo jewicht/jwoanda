@@ -6,6 +6,108 @@ cimport numpy as np
 ctypedef np.float64_t FLOAT_t
 ctypedef np.uint8_t BOOL_t
 
+import math
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def resize_cython(candles, int n):
+    cdef np.ndarray[FLOAT_t, ndim=1] oa = candles['openAsk']
+    cdef np.ndarray[FLOAT_t, ndim=1] ob = candles['openBid']
+    cdef np.ndarray[FLOAT_t, ndim=1] ha = candles['highAsk']
+    cdef np.ndarray[FLOAT_t, ndim=1] hb = candles['highBid']
+    cdef np.ndarray[FLOAT_t, ndim=1] la = candles['lowAsk']
+    cdef np.ndarray[FLOAT_t, ndim=1] lb = candles['lowBid']
+    cdef np.ndarray[FLOAT_t, ndim=1] ca = candles['closeAsk']
+    cdef np.ndarray[FLOAT_t, ndim=1] cb = candles['closeBid']
+    cdef np.ndarray[FLOAT_t, ndim=1] vol = candles['volume']
+    cdef np.ndarray[BOOL_t, ndim=1] complete = candles['complete'].astype(np.uint8)
+    cdef np.ndarray[FLOAT_t, ndim=1] opentime = candles['time']
+
+    cdef double openAsk = 0.
+    cdef double openBid = 0.
+    cdef double highAsk = 0.
+    cdef double highBid = 0.
+    cdef double lowAsk = 0.
+    cdef double lowBid = 0.
+    cdef double closeAsk = 0.
+    cdef double closeBid = 0.
+    cdef double openTime = 0.
+    cdef double volume = 0.
+
+    cdef long ncandles = math.floor(len(candles)/n)
+
+    cdef np.ndarray[FLOAT_t, ndim=1] vopentime = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] voa = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vob = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vha = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vhb = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vla = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vlb = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vca = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vcb = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[FLOAT_t, ndim=1] vvol = np.zeros(ncandles, dtype=np.float64)
+    cdef np.ndarray[BOOL_t, ndim=1] vcomplete = np.zeros(ncandles, dtype=np.uint8)
+
+    cdef long i = 1
+    cdef long cnt = 0
+    cdef long icandle = ncandles - 1
+    for cnt in range(oa.size -1, -1, -1):
+        if i == 1:
+            closeAsk = ca[cnt]
+            closeBid = cb[cnt]
+            lowAsk = la[cnt]
+            lowBid = lb[cnt]
+            highAsk = ha[cnt]
+            highBid = hb[cnt]
+            volume = vol[cnt]
+        else:
+            if ha[cnt] > highAsk:
+                highAsk = ha[cnt]
+            if hb[cnt] > highBid:
+                highBid = hb[cnt]
+            if la[cnt] < lowAsk:
+                lowAsk = la[cnt]
+            if lb[cnt] < lowBid:
+                lowBid = lb[cnt]
+            volume += vol[cnt]
+
+        if i == n:
+            vopentime[icandle] = opentime[cnt]
+            voa[icandle] = oa[cnt]
+            vob[icandle] = ob[cnt]
+            vha[icandle] = highAsk
+            vhb[icandle] = highBid
+            vla[icandle] = lowAsk
+            vlb[icandle] = lowBid
+            vca[icandle] = closeAsk
+            vcb[icandle] = closeBid
+            vvol[icandle] = volume
+            vcomplete[icandle] = 1            
+            icandle += -1
+            i = 1
+            volume = 0
+        else:
+            i += 1
+      
+    cdict = {}
+    cdict['openBid'] = vob
+    cdict['highBid'] = vhb
+    cdict['lowBid'] = vlb
+    cdict['closeBid'] = vcb
+    
+    cdict['openAsk'] = voa
+    cdict['highAsk'] = vha
+    cdict['lowAsk'] = vla
+    cdict['closeAsk'] = vca
+    
+    cdict['volume'] = vvol
+    cdict['time'] = vopentime
+    cdict['complete'] = vcomplete
+    
+    return cdict
+
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def resizebyvolume_cython(candles, long maxvolume):

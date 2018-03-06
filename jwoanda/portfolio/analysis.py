@@ -179,22 +179,28 @@ class Analysis(object):
         TPtrades = alltrades[alltrades["closereason"] == ExitReason.TP.value]
         TStrades = alltrades[alltrades["closereason"] == ExitReason.TS.value]
         SLtrades = alltrades[alltrades["closereason"] == ExitReason.SL.value]
+        LTtrades = alltrades[alltrades["closereason"] == ExitReason.LIFETIME.value]
+
         logging.info("")
         if normaltrades.size > 0:
             logging.info("For trades not stopped by TP/SL/TS")
             self.showminmax(normaltrades)
         if TPtrades.size > 0:
             logging.info("")
-            logging.info("For trades stopped by TP")
+            logging.info("For trades stopped by TakeProfit")
             self.showminmax(TPtrades)
         if SLtrades.size > 0:
             logging.info("")
-            logging.info("For trades stopped by SL")
+            logging.info("For trades stopped by StopLoss")
             self.showminmax(SLtrades)
         if TStrades.size > 0:
             logging.info("")
-            logging.info("For trades stopped by TS")
+            logging.info("For trades stopped by TrailingStop")
             self.showminmax(TStrades)
+        if LTtrades.size > 0:
+            logging.info("")
+            logging.info("For trades stopped by Lifetime")
+            self.showminmax(LTtrades)
 
 
     def analysis(self):

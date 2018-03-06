@@ -29,7 +29,6 @@ class Events(IntEnum):
 
 @unique
 class Granularity(IntEnum):
-    NONE = 1
     S5 = 5
     S10 = 10
     S15 = 15

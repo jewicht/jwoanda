@@ -1,11 +1,11 @@
 import numpy as np
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
-from jwoanda.backtests.backtest import Backtest
+from jwoanda.backtests.backtest import BaseBacktest
 from jwoanda.enums import Granularity
 from jwoanda.history import getcandles
 
-class TicksBacktest(Backtest):
+class TicksBacktest(BaseBacktest):
     def __init__(self, strategy, start, end, **kwargs):
         super(TicksBacktest, self).__init__(strategy, start, end, **kwargs)
         self.candles = getcandles(strategy.instrument, Granularity.S5, start, end)
@@ -20,12 +20,12 @@ class TicksBacktest(Backtest):
                                         ETA()],
                                max_value=len(candles)).start()
 
-        for i in range(0, candles.size):
+        for cnt, candle in enumerate(candles):
 
-            self.simpletickgenerator(candles[i], self.strategy.instrument)
+            self.simpletickgenerator(candle, self.strategy.instrument)
             
             if self.showprogressbar:
-                pbar.update(i+1)
+                pbar.update(cnt)
 
         if self.showprogressbar:
             pbar.finish()

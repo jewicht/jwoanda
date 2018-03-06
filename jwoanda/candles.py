@@ -35,7 +35,7 @@ class Candles(object):
 
         if df is not None:
             size = len(df)
-            self._data = self.zerodata(size)
+            self._data = Candles.zerodata(size)
             for c in self._data.dtype.names:
                 if c == 'time':
                     continue
@@ -51,17 +51,17 @@ class Candles(object):
 
         if cdict is not None:
             ncandles = len(cdict.get('volume'))
-            self._data = self.zerodata(ncandles)
+            self._data = Candles.zerodata(ncandles)
             for key, val in get_items(cdict):
                 self._data[key] = val
             self._ncandles = ncandles
             return
 
-        self._data = self.zerodata(size)
+        self._data = Candles.zerodata(size)
         self._ncandles = 0
 
-
-    def zerodata(self, size):
+    @staticmethod
+    def zerodata(size):
         return np.zeros(size, dtype=[('openBid', np.float64), ('openAsk', np.float64),
                                      ('highBid', np.float64), ('highAsk', np.float64),
                                      ('lowBid', np.float64), ('lowAsk', np.float64),
@@ -71,7 +71,7 @@ class Candles(object):
 
 
     def resize(self, newsize):
-        self._data = np.append(self._data, self.zerodata(newsize - len(self._data)))
+        self._data = np.append(self._data, Candles.zerodata(newsize - len(self._data)))
 
     def __len__(self):
         return len(self._data)
