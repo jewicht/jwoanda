@@ -50,12 +50,11 @@ class Clock(threading.Thread):
 class CandleDownloader(threading.Thread):
 
     def __init__(self, ilist, granularity, hm, portfolio, evc, evr):
-        super(CandleDownloader, self).__init__(name='_'.join(["CandleDownloader", granularity.name] +
-                                                             [i.name for i in ilist]))
+        super(CandleDownloader, self).__init__(name='_'.join(["CandleDownloader", granularity.name]))
 
         self.stop = threading.Event()
         self.kill = False
-        self.ilist = ilist
+        self.ilist = set(ilist)
         self.granularity = granularity
         self.hm = hm
         self.portfolio = portfolio
@@ -64,14 +63,23 @@ class CandleDownloader(threading.Thread):
         self.evr = evr
 
 
+    def addInstrument(self, instrument):
+        self.ilist.add(instrument)
+        self.initInstrument(instrument)
+
+
+    def initInstrument(self, instrument, count=100):
+        candles = downloadcandles(instrument.name, self.granularity.name, count)
+        for candle in candles:
+            if candle.complete:
+                self.hm.addCandle(instrument, self.granularity, candle)
+
+
     def run(self):
 
         for instrument in self.ilist:
-            candles = downloadcandles(instrument.name, self.granularity.name, 100)
-            for candle in candles:
-                if candle.complete:
-                    self.hm.addCandle(instrument, self.granularity, candle)
-        
+            self.initInstrument(instrument)
+
         while not self.kill:
             self.evc.wait()
             if self.kill:

@@ -7,19 +7,20 @@ class PositionStatus(IntEnum):
 
 @unique
 class TradeDirection(Enum):
-    SHORT = 'sell'
-    LONG = 'buy'
-    NONE = 'none'
+    SHORT = 0
+    LONG = 1
+    NEUTRAL = 2
 
 @unique
 class ExitReason(Enum):
-    NORMAL = 'normal'
-    TP = 'TP'
-    SL = 'SL'
-    TS = 'TS'
-    END = 'END'
-    LIFETIME = 'Lifetime'
-    NONE = 'NONE'
+    NORMAL = 0
+    TP = 1
+    SL = 2
+    TS = 3
+    END = 4
+    LIFETIME = 5
+    FLIP = 6
+    NOREASON = 7
 
 @unique
 class Events(IntEnum):

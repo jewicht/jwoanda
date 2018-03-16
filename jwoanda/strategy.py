@@ -170,7 +170,7 @@ class BaseStrategy(with_metaclass(ABCMeta)):
                                             **newargs)
 
 
-    def closeposition(self, instrument, tradeID=None, reason=ExitReason.NORMAL):
+    def closeposition(self, instrument, tradeID=None, reason=ExitReason.NOREASON):
         if tradeID is None:
             self._portfolio.closeallpositions(reason, instrument=instrument)
         else:
@@ -246,7 +246,8 @@ class BaseStrategy(with_metaclass(ABCMeta)):
             return True
         else:
             return False
-        
+
+
     @staticmethod
     def crossbelow(ma1, ma2):
         if (isinstance(ma2, float) or isinstance(ma2, np.float)):
@@ -260,6 +261,11 @@ class BaseStrategy(with_metaclass(ABCMeta)):
             return True
         else:
             return False
+
+
+    def isTradeOpen(self, tradeID):
+        return self.portfolio.isTradeOpen(tradeID)
+
 
 
 class Strategy(with_metaclass(ABCMeta, BaseStrategy)):
@@ -284,7 +290,7 @@ class Strategy(with_metaclass(ABCMeta, BaseStrategy)):
         self._units = kwargs.get('units', self.instrument.minimumTradeSize)
 
         s = ", ".join([i.name for i in instruments])
-        s += "@ {}".format(granularity.name)            
+        s += " @ {}".format(granularity.name)            
         logging.info("init {} on {}".format(self.name, s))
         
 

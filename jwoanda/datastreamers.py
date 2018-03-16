@@ -129,14 +129,17 @@ class RatesStreamer(threading.Thread):
         self.docheckTPSL = kwargs.get("docheckTPSL", False)
 
 
-    def addinstrument(self, instrument):
+    def addInstrument(self, instrument):
         self.instruments.add(instrument)
         self.restart = True
 
+    def setTickQueues(self, tickqueues):
+        self.tickQueues = tickqueues
 
     def run(self):
-        logging.info("Running: instruments = %s", ','.join(self.instruments))
+        logging.info("Running: instruments = %s", ','.join([i.name for i in self.instruments]))
         while not self.kill:
+            self.restart = False
             self.realrun()
 
 
@@ -145,7 +148,7 @@ class RatesStreamer(threading.Thread):
             try:
                 response = oandaenv.streamingapi().pricing.stream(
                     oandaenv.account_id,
-                    instruments=','.join(self.instruments)
+                    instruments=','.join([i.name for i in self.instruments])
                 )
     
                 for msg_type, msg in response.parts():
@@ -209,9 +212,11 @@ class RatesStreamer(threading.Thread):
             if self.docheckTPSL:
                 self.portfolio.checkTPSL(tick)
 
+            logging.debug("%s bid=%f ask=%f", instrument.name, bid, ask)
             for eq in self.tickQueues:
                 if instrument in eq['instruments']:
                     eq['queue'].put({'type': Events.TICK, 'tick': tick})
+
         else:
             pass
 
@@ -225,7 +230,7 @@ class RatesStreamer(threading.Thread):
 class FakeRatesStreamer(threading.Thread):
     def __init__(self, tickQueues, instruments, portfolio, **kwargs):
         super(FakeRatesStreamer, self).__init__(name=FakeRatesStreamer)
-        self.instruments = [Instruments[instrument] for instrument in instruments]
+        self.instruments = instruments
 
         self.lastheartbeattime = None
         self.lastpricetime = None
@@ -239,6 +244,12 @@ class FakeRatesStreamer(threading.Thread):
         for instrument in self.instruments:
             self.prices[instrument] = np.random.random()
 
+    def addInstrument(self, instrument):
+        self.instruments.add(instrument)
+        self.restart = True
+
+    def setTickQueues(self, tickqueues):
+        self.tickQueues = tickqueues
 
     def run(self):
         #logging.info("Running: instruments = %s", ','.join(self.instruments))

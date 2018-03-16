@@ -54,83 +54,68 @@ class TradingApp(object):
         if not isinstance(self.portfolio, Portfolio):
             raise ValueError("Not a portfolio?")
 
-        tradedinstruments = set()
+        self.tradedinstruments = set()
         for strategy in self.strategies:
             if not isinstance(strategy, BaseStrategy):
                 raise ValueError("Not a strategy?")
             for instrument in strategy.instruments:
-                tradedinstruments.add(instrument.name)
+                self.tradedinstruments.add(instrument)
 
-        logging.info("tradedinstruments = %s", " ".join(tradedinstruments))
+        logging.info("tradedinstruments = %s", " ".join([i.name for i in self.tradedinstruments]))
 
-
-        tickQueues = []
 
         self.threads = []
         self.processes = []
-        pipelist = []
 
         if self.usegtk:
             from jwoanda.gtkinterface import GTKInterface
-            self.gtkinterface = GTKInterface(tradedinstruments, name="GTKInterface")
+            self.gtkinterface = GTKInterface(self.tradedinstruments, name="GTKInterface")
             self.threads.append(self.gtkinterface)
         else:
             self.gtkinterface = None
 
-        iglist = set()
-        glist = set()
+        self.iglist = set()
+        self.glist = set()
         for strategy in strategies:
-            glist.add(strategy.granularity)
+            self.glist.add(strategy.granularity)
             for i in strategy.instruments:
-                iglist.add((i, strategy.granularity))
+                self.iglist.add((i, strategy.granularity))
 
-
-        clocks = []
-
-        candleCloseEvents = {}
-        candleReadyEvents = {}
-        for g in glist:
-            ev = threading.Event()
-            clock = Clock(g, ev)
-            self.threads.append(clock)
-
-            clocks.append( {'clock': clock,
-                            'g': g,
-                            'ev' : ev})
-            candleCloseEvents[g] = ev
-            candleReadyEvents[g] = threading.Event()
+        self.tickQueues = []
+        self.candleCloseEvents = {}
+        self.candleReadyEvents = {}
+        self.clocks = {}
+        self.candledl = {}
+        for g in self.glist:
+            self.addClock(g)
             
-        self.hm = RealHistoryManager(iglist)
+        self.hm = RealHistoryManager(self.iglist)
 
         
         for strategy in self.strategies:
-            eQ = Queue()
-            tickQueues.append({'instruments': strategy.instruments,
-                               'queue': eQ})
+            tQ = Queue()
+            self.tickQueues.append({'instruments': strategy.instruments,
+                               'queue': tQ})
             
             strategy.portfolio = self.portfolio
             strategy.hm = self.hm
             
-            tst = TickStrategyTrading(strategy, eQ)
+            tst = TickStrategyTrading(strategy, tQ)
             self.threads.append(tst)
             
             if isinstance(strategy, Strategy):
-                st = StrategyTrading(strategy, candleReadyEvents[strategy.granularity])
+                st = StrategyTrading(strategy, self.candleReadyEvents[strategy.granularity])
                 self.threads.append(st)
 
         
-        for g in glist:
+        for g in self.glist:
             ilist = set()
             for strategy in self.strategies:
                 if strategy.granularity == g:
                     for i in strategy.instruments:
                         ilist.add(i)
-
-            evc = candleCloseEvents[g]
-            evr = candleReadyEvents[g]
-            cdth = CandleDownloader(ilist, g, self.hm, self.portfolio, evc, evr)
-            self.threads.append(cdth)
-
+        
+            self.addCandleDL(ilist, g)
 
         est = TransactionsStreamer(self.portfolio)
         self.threads.append(est)
@@ -141,25 +126,84 @@ class TradingApp(object):
         self.threads.append(eshb)
 
         if self.usefakedata:
-            rst = FakeRatesStreamer(tickQueues,
-                                    tradedinstruments,
-                                    self.portfolio)
-            self.threads.append(rst)
+            self.rst = FakeRatesStreamer(self.tickQueues,
+                                        self.tradedinstruments,
+                                        self.portfolio)
+            self.threads.append(self.rst)
         else:
-            rst = RatesStreamer(tickQueues,
-                                tradedinstruments,
+            self.rst = RatesStreamer(self.tickQueues,
+                                self.tradedinstruments,
                                 self.portfolio,
                                 self.gtkinterface,
                                 docheckTPSL=self.docheckTPSL)
-            self.threads.append(rst)
+            self.threads.append(self.rst)
 
-        rshb1 = HeartbeatCheck(rst, 'lastheartbeattime', name='HeartbeatCheck-RateStreamer', delay=5)
+        rshb1 = HeartbeatCheck(self.rst, 'lastheartbeattime', name='HeartbeatCheck-RateStreamer', delay=5)
         self.threads.append(rshb1)
-        rshb2 = HeartbeatCheck(rst, 'lastpricetime', name='PriceCheck-RateStreamer', delay=60)
+        rshb2 = HeartbeatCheck(self.rst, 'lastpricetime', name='PriceCheck-RateStreamer', delay=60)
         self.threads.append(rshb2)
-        self.tickQueues = tickQueues
-        self.candleCloseEvents = candleCloseEvents
-        self.candleReadyEvents = candleReadyEvents
+
+        #for s in strategies:
+        #    self.addStrategy(s)
+
+    def addCandleDL(self, ilist, g, start=False):
+        evc = self.candleCloseEvents[g]
+        evr = self.candleReadyEvents[g]
+        cdth = CandleDownloader(ilist, g, self.hm, self.portfolio, evc, evr)
+        if start:
+            cdth.start()
+        self.candledl[g] = cdth
+        self.threads.append(cdth)
+    
+
+    def addStrategy(self, strategy, start=False):
+        for i in strategy.instruments:
+            self.hm.add(i, strategy.granularity)
+
+        if not strategy.granularity in self.glist:
+            # need to create clock and CandleDl
+            self.addClock(strategy.granularity, start=start)
+            self.addCandleDL(strategy.instruments, strategy.granularity, start=start)
+            self.glist.add(strategy.granularity)
+        else:
+            cdl = self.candledl[strategy.granularity]
+            for instrument in strategy.instruments:
+                cdl.addInstrument(instrument)
+
+
+        for instrument in strategy.instruments:
+            self.hm.add(instrument, strategy.granularity)
+            if not instrument in self.tradedinstruments:
+                self.tradedinstruments.add(instrument)
+                self.rst.addInstrument(instrument)
+
+        tQ = Queue()
+        self.tickQueues.append({'instruments': strategy.instruments,
+                               'queue': tQ})
+
+        tst = TickStrategyTrading(strategy, tQ)
+        if start:
+            tst.start()
+        self.threads.append(tst)
+        self.rst.setTickQueues(self.tickQueues)
+
+        if isinstance(strategy, Strategy):
+            st = StrategyTrading(strategy, self.candleReadyEvents[strategy.granularity])
+            if start:
+                st.start()
+            self.threads.append(st)
+
+
+    def addClock(self, g, start=False):
+        ev = threading.Event()
+        clock = Clock(g, ev)
+        if start:
+            clock.start()
+        self.threads.append(clock)
+
+        self.clocks[g] = clock
+        self.candleCloseEvents[g] = ev
+        self.candleReadyEvents[g] = threading.Event()
 
 
     def run(self):

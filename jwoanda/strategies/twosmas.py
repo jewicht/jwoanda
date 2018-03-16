@@ -36,7 +36,7 @@ class TwoSMAsStrategy(Strategy):
         self.indicators[:, 2] = self.mva
 
 
-    def onTick(self):
+    def onTick(self, tick):
         pass
 
 

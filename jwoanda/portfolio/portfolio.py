@@ -90,7 +90,7 @@ class Portfolio(with_metaclass(ABCMeta)):
     def zerodata(self, size):
         return np.zeros(size, dtype=[('status', np.uint8),
                                      ('instrument', 'U10'),
-                                     ('closereason', 'U20'),
+                                     ('closereason', np.uint8),
                                      ('strategy', 'U30'),
                                      ('units', np.int64),
                                      ('closespread', np.float64),
@@ -146,7 +146,7 @@ class Portfolio(with_metaclass(ABCMeta)):
 
 
     def closeTrade(self, **kwargs):
-        reason = kwargs.get("reason", ExitReason.NONE)
+        reason = kwargs.get("reason", ExitReason.NOREASON)
 
         oandaID = kwargs.get("oandaID", None)
         if oandaID is None:
@@ -334,3 +334,6 @@ class Portfolio(with_metaclass(ABCMeta)):
                 self.closeposition(tradeID, reason)
             elif instrument.name == self.trades[tradeID]['instrument']:
                 self.closeposition(tradeID, reason)
+
+    def isTradeOpen(self, tradeID):
+        return tradeID in self.openedtrades

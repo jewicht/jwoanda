@@ -33,12 +33,13 @@ class BaseHistoryManager(object, with_metaclass(ABCMeta)):
 
 
 class RealHistoryManager(BaseHistoryManager):
-    def __init__(self, iglist):
+    def __init__(self, iglist=None):
         super(RealHistoryManager, self).__init__()
         self._ready = {}
-        for i, g in iglist:
-            self._candles[(i, g)] = Candles(i, g)
-            self._indicies[(i, g)] = 0
+        if iglist is not None:
+            for i, g in iglist:
+                self._candles[(i, g)] = Candles(i, g)
+                self._indicies[(i, g)] = 0
 
 
     def add(self, i, g):
@@ -153,83 +154,6 @@ def resizebyvolume(candles, maxvolume):
     newcandles = Candles(candles.instrument,
                          granularity=VolumeGranularity(maxvolume),
                          cdict=cdict)
-    return newcandles
-
-
-def _resizebyvolume_python(candles, maxvolume):
-    logging.info("Resizing %s %s to %d", candles.instrument.name, candles.granularity.name, maxvolume)
-
-    totvolume = candles.data["volume"].sum()
-    maxentries = int(1.2 * totvolume / maxvolume)
-
-    logging.debug("totvolume = %d", totvolume)
-    newcandles = Candles(size=maxentries, instrument=candles.instrument, granularity=VolumeGranularity(maxvolume))
-    
-    volume = 0
-    
-    for candle in candles.data:
-        
-        if not candle["complete"]:
-            continue
-
-        if volume == 0:
-            openAsk = candle["openAsk"]
-            openBid = candle["openBid"]
-            highAsk = candle["highAsk"]
-            highBid = candle["highBid"]
-            lowAsk = candle["lowAsk"]
-            lowBid = candle["lowBid"]
-            closeAsk = candle["closeAsk"]
-            closeBid = candle["closeBid"]
-            opentime = candle["time"]#append(index)#   = index
-            
-        volume += candle["volume"]
-
-        if candle["highAsk"] > highAsk:
-            highAsk = candle["highAsk"]
-        if candle["highBid"] > highBid:
-            highBid = candle["highBid"]
-        if candle["lowAsk"] < lowAsk:
-            lowAsk = candle["lowAsk"]
-        if candle["lowBid"] < lowBid:
-            lowBid = candle["lowBid"]
-
-        if volume >= maxvolume:
-            closeAsk = candle["closeAsk"]
-            closeBid = candle["closeBid"]
-            closetime = candle["time"]#append(index)
-
-            volcandle = {
-                'openBid': openBid, 'openAsk': openAsk,
-                'highBid': highBid, 'highAsk': highAsk,
-                'lowBid': lowBid, 'lowAsk': lowAsk,
-                'closeBid': closeBid, 'closeAsk': closeAsk,
-                'volume' : volume, 'time': opentime, 'complete': True
-            }
-            newcandles.add(volcandle)
-
-            volume = 0
-
-        #add a last non complete candle
-    if volume > 0:
-        volcandle = {
-            'openBid': openBid, 'openAsk': openAsk,
-            'highBid': highBid, 'highAsk': highAsk,
-            'lowBid': lowBid, 'lowAsk': lowAsk,
-            'closeBid': closeBid, 'closeAsk': closeAsk,
-            'volume' : volume, 'time': opentime, 'complete': False
-        }
-        newcandles.add(volcandle)
-
-    logging.debug("resize fcn lowAsk = %f volume = %f complete = %d", lowAsk, volume, False)
-    
-    newcandles.head(newcandles.ncandles, inplace=True)
-    lastcandle = candles.data[candles.ncandles - 1]
-    logging.debug("resize fcn lowAsk = %f volume = %f complete = %d", lastcandle["lowAsk"], lastcandle["volume"], lastcandle["complete"])
-    
-    lastcandle = newcandles.data[newcandles.ncandles - 1]
-    logging.debug("resize fcn lowAsk = %f volume = %f complete = %d", lastcandle["lowAsk"], lastcandle["volume"], lastcandle["complete"])
-    
     return newcandles
 
 

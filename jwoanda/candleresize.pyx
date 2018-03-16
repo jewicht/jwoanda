@@ -10,7 +10,7 @@ import math
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def resize_cython(candles, int n):
+def resize(candles, int n):
     cdef np.ndarray[FLOAT_t, ndim=1] oa = candles['openAsk']
     cdef np.ndarray[FLOAT_t, ndim=1] ob = candles['openBid']
     cdef np.ndarray[FLOAT_t, ndim=1] ha = candles['highAsk']
@@ -89,22 +89,24 @@ def resize_cython(candles, int n):
         else:
             i += 1
       
-    cdict = {}
-    cdict['openBid'] = vob
-    cdict['highBid'] = vhb
-    cdict['lowBid'] = vlb
-    cdict['closeBid'] = vcb
-    
-    cdict['openAsk'] = voa
-    cdict['highAsk'] = vha
-    cdict['lowAsk'] = vla
-    cdict['closeAsk'] = vca
-    
-    cdict['volume'] = vvol
-    cdict['time'] = vopentime
-    cdict['complete'] = vcomplete
-    
-    return cdict
+    data = np.empty(ncandles, dtype=[('openBid', np.float64), ('openAsk', np.float64),
+                                    ('highBid', np.float64), ('highAsk', np.float64),
+                                     ('lowBid', np.float64), ('lowAsk', np.float64),
+                                     ('closeBid', np.float64), ('closeAsk', np.float64),
+                                     ('volume', np.float64), ('time', np.float64),
+                                     ('complete', np.uint8)])
+    data['openBid'] = vob
+    data['openAsk'] = voa
+    data['highBid'] = vhb
+    data['highAsk'] = vha
+    data['lowBid'] = vlb
+    data['lowAsk'] = vla
+    data['closeBid'] = vcb
+    data['closeAsk'] = vca
+    data['volume'] = vvol
+    data['time'] = vopentime
+    data['complete'] = vcomplete
+    return data
 
 
 

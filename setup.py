@@ -55,7 +55,6 @@ setup(
     install_requires=install_requires,
     extras_require={
         ':python_version == "2.7"': [
-            'backports_abc',
             'backports.lzma'
         ],
     },

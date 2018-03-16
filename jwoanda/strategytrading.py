@@ -19,11 +19,11 @@ class StrategyTrading(threading.Thread):
             self.evr.wait()
             if self.kill:
                 return
-
             marketopen = True
             for i in self.strategy.instruments:
                 if not self.strategy.portfolio.istradeable(i):
                     marketopen = False
+                    logging.debug("market closed")
                     break
 
             if not marketopen:

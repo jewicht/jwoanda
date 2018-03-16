@@ -104,8 +104,9 @@ class Analysis(object):
         except:
             pass
 
-        x = np.array([datetime.fromtimestamp(x).hour + datetime.fromtimestamp(x).minute * 100. / 60. for x in trades['opentime']])
+        x = np.array([datetime.fromtimestamp(x).hour + datetime.fromtimestamp(x).minute * 1. / 60. for x in trades['opentime']])
         self.fitandplot(ax[3, col], x, y)
+        ax[3, col].set_xlim(0., 24.)
         try:
             k = kde.gaussian_kde([x,y])
             xi, yi = np.mgrid[x.min():x.max():nbins*1j, y.min():y.max():nbins*1j]
@@ -169,13 +170,16 @@ class Analysis(object):
         logging.info("")
 
         self.showminmax(alltrades)
-        logging.info("Exit reason: normal = %.1f%%, TP = %1.f%%, SL = %.1f%%, TS = %.1f%%",
+        logging.info("Exit reason: normal = %.1f%%, flip = %.1f%%, TP = %1.f%%, SL = %.1f%%, TS = %.1f%%, LT = %.1f%%",
                      100.*alltrades[alltrades["closereason"] == ExitReason.NORMAL.value].size/alltrades.size,
+                     100.*alltrades[alltrades["closereason"] == ExitReason.FLIP.value].size/alltrades.size,
                      100.*alltrades[alltrades["closereason"] == ExitReason.TP.value].size/alltrades.size,
                      100.*alltrades[alltrades["closereason"] == ExitReason.SL.value].size/alltrades.size,
-                     100.*alltrades[alltrades["closereason"] == ExitReason.TS.value].size/alltrades.size)
+                     100.*alltrades[alltrades["closereason"] == ExitReason.TS.value].size/alltrades.size,
+                     100.*alltrades[alltrades["closereason"] == ExitReason.LIFETIME.value].size/alltrades.size)
 
         normaltrades = alltrades[alltrades["closereason"] == ExitReason.NORMAL.value]
+        fliptrades = alltrades[alltrades["closereason"] == ExitReason.FLIP.value]
         TPtrades = alltrades[alltrades["closereason"] == ExitReason.TP.value]
         TStrades = alltrades[alltrades["closereason"] == ExitReason.TS.value]
         SLtrades = alltrades[alltrades["closereason"] == ExitReason.SL.value]
@@ -183,8 +187,11 @@ class Analysis(object):
 
         logging.info("")
         if normaltrades.size > 0:
-            logging.info("For trades not stopped by TP/SL/TS")
+            logging.info("Trades stopped normally")
             self.showminmax(normaltrades)
+        if fliptrades.size > 0:      
+            logging.info("Trades stopped by Flip")
+            self.showminmax(fliptrades)   
         if TPtrades.size > 0:
             logging.info("")
             logging.info("For trades stopped by TakeProfit")

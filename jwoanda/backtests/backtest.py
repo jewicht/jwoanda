@@ -14,6 +14,7 @@ from six import with_metaclass
 import numpy as np
 import pathlib2
 from progressbar import Bar, ETA, Percentage, ProgressBar
+from progressbar.widgets import FormatWidgetMixin, WidgetBase
 
 from jwoanda.strategy import BaseStrategy
 from jwoanda.portfolio.btportfolio import BTPortfolio
@@ -216,6 +217,24 @@ class BaseBacktest(object, with_metaclass(ABCMeta)):
         f.close()
 
 
+class PLEta(FormatWidgetMixin, WidgetBase):
+    '''Displays the current percentage as a number with a percent sign.'''
+
+    def __init__(self, portfolio, format='%(percentage)3d%%', **kwargs):
+        FormatWidgetMixin.__init__(self, format=format, **kwargs)
+        WidgetBase.__init__(self, format=format, **kwargs)
+        self.portfolio = portfolio
+        
+    def __call__(self, progress, data, format=None):
+        return "|P/L: %.4f" % np.sum(self.portfolio.trades["pl"])
+        # # If percentage is not available, display N/A%
+        # if 'percentage' in data and not data['percentage']:
+        #     return FormatWidgetMixin.__call__(self, progress, data,
+        #                                       format='N/A%%')
+
+        # return FormatWidgetMixin.__call__(self, progress, data)
+
+        
 
 class Backtest(BaseBacktest):
 
@@ -239,7 +258,8 @@ class Backtest(BaseBacktest):
             pbar = ProgressBar(widgets=['Backtesting: ',
                                         Percentage(),
                                         Bar(),
-                                        ETA()],
+                                        ETA(),
+                                        PLEta(self.portfolio)],
                                max_value=self.maxtime - self.mintime)
         while self.bthm.iteratetime():
             if self.showprogressbar:
